@@ -1,0 +1,1065 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>StudentDashboard</class>
+ <widget class="QMainWindow" name="StudentDashboard">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1000</width>
+    <height>700</height>
+   </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>1000</width>
+    <height>700</height>
+   </size>
+  </property>
+  <property name="windowTitle">
+   <string>Language School - Student Dashboard</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">QMainWindow {
+    background-color: #f5f5f5;
+}
+
+QLabel#welcomeLabel {
+    font-size: 18px;
+    font-weight: bold;
+    color: #2c3e50;
+}
+
+QTabWidget::pane {
+    border: 1px solid #bdc3c7;
+    background-color: white;
+}
+
+QTabBar::tab {
+    background-color: #ecf0f1;
+    border: 1px solid #bdc3c7;
+    padding: 8px 16px;
+    margin-right: 2px;
+}
+
+QTabBar::tab:selected {
+    background-color: white;
+    border-bottom-color: white;
+}
+
+QTabBar::tab:hover {
+    background-color: #d6dbdf;
+}
+
+QPushButton {
+    background-color: #3498db;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 16px;
+    font-size: 14px;
+}
+
+QPushButton:hover {
+    background-color: #2980b9;
+}
+
+QPushButton:pressed {
+    background-color: #1f6dad;
+}
+
+QPushButton#logoutButton {
+    background-color: #e74c3c;
+}
+
+QPushButton#logoutButton:hover {
+    background-color: #c0392b;
+}
+
+QTableWidget {
+    border: 1px solid #bdc3c7;
+    gridline-color: #ecf0f1;
+    selection-background-color: #3498db;
+    selection-color: white;
+}
+
+QTableWidget QHeaderView::section {
+    background-color: #ecf0f1;
+    padding: 4px;
+    border: 1px solid #bdc3c7;
+    font-weight: bold;
+}
+
+QLineEdit, QComboBox, QSpinBox, QDateEdit {
+    padding: 6px;
+    border: 1px solid #bdc3c7;
+    border-radius: 4px;
+    background-color: white;
+}
+
+QLineEdit:focus, QComboBox:focus, QSpinBox:focus, QDateEdit:focus {
+    border: 1px solid #3498db;
+}
+
+QProgressBar {
+    border: 1px solid #bdc3c7;
+    border-radius: 4px;
+    text-align: center;
+    background-color: #ecf0f1;
+}
+
+QProgressBar::chunk {
+    background-color: #3498db;
+    width: 10px;
+}</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QVBoxLayout" name="verticalLayout">
+    <property name="spacing">
+     <number>16</number>
+    </property>
+    <property name="leftMargin">
+     <number>20</number>
+    </property>
+    <property name="topMargin">
+     <number>20</number>
+    </property>
+    <property name="rightMargin">
+     <number>20</number>
+    </property>
+    <property name="bottomMargin">
+     <number>20</number>
+    </property>
+    <item>
+     <layout class="QHBoxLayout" name="headerLayout">
+      <item>
+       <widget class="QLabel" name="welcomeLabel">
+        <property name="text">
+         <string>Welcome, Student</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="horizontalSpacer">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QPushButton" name="logoutButton">
+        <property name="text">
+         <string>Logout</string>
+        </property>
+        <property name="icon">
+         <iconset>
+          <normaloff>../../resources/icons/logout.png</normaloff>../../resources/icons/logout.png</iconset>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+    <item>
+     <widget class="QTabWidget" name="tabWidget">
+      <property name="currentIndex">
+       <number>0</number>
+      </property>
+      <widget class="QWidget" name="dashboardTab">
+       <attribute name="title">
+        <string>Dashboard</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_2">
+        <item>
+         <widget class="QLabel" name="dashboardTitleLabel">
+          <property name="font">
+           <font>
+            <pointsize>14</pointsize>
+            <weight>75</weight>
+            <bold>true</bold>
+           </font>
+          </property>
+          <property name="text">
+           <string>My Learning Dashboard</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="dashboardStatsLayout">
+          <item>
+           <widget class="QGroupBox" name="enrolledCoursesGroup">
+            <property name="title">
+             <string>Enrolled Courses</string>
+            </property>
+            <layout class="QVBoxLayout" name="verticalLayout_7">
+             <item>
+              <widget class="QLabel" name="enrolledCoursesCountLabel">
+               <property name="font">
+                <font>
+                 <pointsize>24</pointsize>
+                 <weight>75</weight>
+                 <bold>true</bold>
+                </font>
+               </property>
+               <property name="text">
+                <string>3</string>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignCenter</set>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="viewCoursesButton">
+               <property name="text">
+                <string>View Courses</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item>
+           <widget class="QGroupBox" name="upcomingLessonsGroup">
+            <property name="title">
+             <string>Upcoming Lessons</string>
+            </property>
+            <layout class="QVBoxLayout" name="verticalLayout_8">
+             <item>
+              <widget class="QLabel" name="upcomingLessonsCountLabel">
+               <property name="font">
+                <font>
+                 <pointsize>24</pointsize>
+                 <weight>75</weight>
+                 <bold>true</bold>
+                </font>
+               </property>
+               <property name="text">
+                <string>5</string>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignCenter</set>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="viewScheduleButton">
+               <property name="text">
+                <string>View Schedule</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item>
+           <widget class="QGroupBox" name="pendingExercisesGroup">
+            <property name="title">
+             <string>Pending Exercises</string>
+            </property>
+            <layout class="QVBoxLayout" name="verticalLayout_9">
+             <item>
+              <widget class="QLabel" name="pendingExercisesCountLabel">
+               <property name="font">
+                <font>
+                 <pointsize>24</pointsize>
+                 <weight>75</weight>
+                 <bold>true</bold>
+                </font>
+               </property>
+               <property name="text">
+                <string>2</string>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignCenter</set>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="viewExercisesButton">
+               <property name="text">
+                <string>View Exercises</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item>
+           <widget class="QGroupBox" name="unreadMessagesGroup">
+            <property name="title">
+             <string>Unread Messages</string>
+            </property>
+            <layout class="QVBoxLayout" name="verticalLayout_10">
+             <item>
+              <widget class="QLabel" name="unreadMessagesCountLabel">
+               <property name="font">
+                <font>
+                 <pointsize>24</pointsize>
+                 <weight>75</weight>
+                 <bold>true</bold>
+                </font>
+               </property>
+               <property name="text">
+                <string>3</string>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignCenter</set>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="viewMessagesButton">
+               <property name="text">
+                <string>View Messages</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <widget class="QGroupBox" name="progressGroup">
+          <property name="title">
+           <string>My Progress</string>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout_11">
+           <item>
+            <layout class="QHBoxLayout" name="progressLayout">
+             <item>
+              <widget class="QLabel" name="course1Label">
+               <property name="text">
+                <string>English B1:</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QProgressBar" name="course1Progress">
+               <property name="value">
+                <number>75</number>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <layout class="QHBoxLayout" name="progressLayout_2">
+             <item>
+              <widget class="QLabel" name="course2Label">
+               <property name="text">
+                <string>Spanish A2:</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QProgressBar" name="course2Progress">
+               <property name="value">
+                <number>45</number>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <layout class="QHBoxLayout" name="progressLayout_3">
+             <item>
+              <widget class="QLabel" name="course3Label">
+               <property name="text">
+                <string>French A1:</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QProgressBar" name="course3Progress">
+               <property name="value">
+                <number>20</number>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <widget class="QGroupBox" name="recentActivityGroup">
+          <property name="title">
+           <string>Recent Activity</string>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout_12">
+           <item>
+            <widget class="QListWidget" name="recentActivityList">
+             <item>
+              <property name="text">
+               <string>You completed Lesson 5 in English B1 - Yesterday</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>You received a grade of 92% on Test 2 in Spanish A2 - 2 days ago</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>You submitted Exercise 3 in French A1 - 3 days ago</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>You enrolled in French A1 - 1 week ago</string>
+              </property>
+             </item>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="coursesTab">
+       <attribute name="title">
+        <string>My Courses</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_3">
+        <item>
+         <layout class="QHBoxLayout" name="coursesToolbarLayout">
+          <item>
+           <widget class="QLineEdit" name="courseSearchInput">
+            <property name="placeholderText">
+             <string>Search courses...</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="courseFilterComboBox">
+            <item>
+             <property name="text">
+              <string>All Languages</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>English</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Spanish</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>French</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>German</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="browseCatalogButton">
+            <property name="text">
+             <string>Browse Course Catalog</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <widget class="QTableWidget" name="coursesTable">
+          <column>
+           <property name="text">
+            <string>ID</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Name</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Language</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Level</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Teacher</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Progress</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Actions</string>
+           </property>
+          </column>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="scheduleTab">
+       <attribute name="title">
+        <string>Schedule</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_4">
+        <item>
+         <layout class="QHBoxLayout" name="scheduleToolbarLayout">
+          <item>
+           <widget class="QComboBox" name="scheduleFilterComboBox">
+            <item>
+             <property name="text">
+              <string>All Courses</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+          <item>
+           <widget class="QDateEdit" name="scheduleDateEdit">
+            <property name="displayFormat">
+             <string>yyyy-MM-dd</string>
+            </property>
+            <property name="calendarPopup">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="exportScheduleButton">
+            <property name="text">
+             <string>Export Schedule</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <widget class="QTableWidget" name="scheduleTable">
+          <column>
+           <property name="text">
+            <string>Date</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Time</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Course</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Lesson</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Teacher</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Room</string>
+           </property>
+          </column>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="lessonsTab">
+       <attribute name="title">
+        <string>Lessons &amp; Exercises</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_5">
+        <item>
+         <layout class="QHBoxLayout" name="lessonsToolbarLayout">
+          <item>
+           <widget class="QComboBox" name="lessonsCourseFilterComboBox">
+            <item>
+             <property name="text">
+              <string>All Courses</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="lessonsStatusFilterComboBox">
+            <item>
+             <property name="text">
+              <string>All Status</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Completed</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>In Progress</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Not Started</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <widget class="QTableWidget" name="lessonsTable">
+          <column>
+           <property name="text">
+            <string>ID</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Course</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Name</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Type</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Due Date</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Status</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Actions</string>
+           </property>
+          </column>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="gradesTab">
+       <attribute name="title">
+        <string>Grades</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_6">
+        <item>
+         <layout class="QHBoxLayout" name="gradesToolbarLayout">
+          <item>
+           <widget class="QComboBox" name="gradesCourseFilterComboBox">
+            <item>
+             <property name="text">
+              <string>All Courses</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="gradesTypeFilterComboBox">
+            <item>
+             <property name="text">
+              <string>All Types</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Exercises</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Tests</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="exportGradesButton">
+            <property name="text">
+             <string>Export Grades</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <widget class="QTableWidget" name="gradesTable">
+          <column>
+           <property name="text">
+            <string>ID</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Course</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Type</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Name</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Date</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Grade</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Feedback</string>
+           </property>
+          </column>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="messagesTab">
+       <attribute name="title">
+        <string>Messages</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_13">
+        <item>
+         <widget class="QSplitter" name="messagesSplitter">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <widget class="QWidget" name="layoutWidget">
+           <layout class="QVBoxLayout" name="chatsLayout">
+            <item>
+             <widget class="QLabel" name="chatsLabel">
+              <property name="text">
+               <string>Chats</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QListWidget" name="chatsList"/>
+            </item>
+            <item>
+             <widget class="QPushButton" name="newChatButton">
+              <property name="text">
+               <string>New Chat</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+          <widget class="QWidget" name="layoutWidget1">
+           <layout class="QVBoxLayout" name="messagesLayout">
+            <item>
+             <widget class="QLabel" name="messagesLabel">
+              <property name="text">
+               <string>Messages</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QListWidget" name="messagesList"/>
+            </item>
+            <item>
+             <layout class="QHBoxLayout" name="messageInputLayout">
+              <item>
+               <widget class="QLineEdit" name="messageInput">
+                <property name="placeholderText">
+                 <string>Type a message...</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QPushButton" name="sendMessageButton">
+                <property name="text">
+                 <string>Send</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+           </layout>
+          </widget>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="paymentsTab">
+       <attribute name="title">
+        <string>Payments</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_14">
+        <item>
+         <layout class="QHBoxLayout" name="paymentsToolbarLayout">
+          <item>
+           <widget class="QComboBox" name="paymentsStatusFilterComboBox">
+            <item>
+             <property name="text">
+              <string>All Status</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Paid</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Pending</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Overdue</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+          <item>
+           <spacer name="horizontalSpacer_2">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item>
+           <widget class="QPushButton" name="makePaymentButton">
+            <property name="text">
+             <string>Make Payment</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <widget class="QTableWidget" name="paymentsTable">
+          <column>
+           <property name="text">
+            <string>ID</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Date</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Description</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Amount</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Status</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Due Date</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Actions</string>
+           </property>
+          </column>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </widget>
+    </item>
+    <item>
+     <layout class="QHBoxLayout" name="statusLayout">
+      <item>
+       <widget class="QLabel" name="statusLabel">
+        <property name="text">
+         <string>Ready</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="horizontalSpacer_3">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QLabel" name="versionLabel">
+        <property name="text">
+         <string>Version 1.0.0</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>1000</width>
+     <height>22</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>File</string>
+    </property>
+    <addaction name="actionRefresh"/>
+    <addaction name="separator"/>
+    <addaction name="actionLogout"/>
+    <addaction name="actionExit"/>
+   </widget>
+   <widget class="QMenu" name="menuCourses">
+    <property name="title">
+     <string>Courses</string>
+    </property>
+    <addaction name="actionViewMyCourses"/>
+    <addaction name="actionBrowseCatalog"/>
+   </widget>
+   <widget class="QMenu" name="menuLearning">
+    <property name="title">
+     <string>Learning</string>
+    </property>
+    <addaction name="actionViewSchedule"/>
+    <addaction name="actionViewLessons"/>
+    <addaction name="actionViewGrades"/>
+   </widget>
+   <widget class="QMenu" name="menuHelp">
+    <property name="title">
+     <string>Help</string>
+    </property>
+    <addaction name="actionAbout"/>
+    <addaction name="actionHelp"/>
+   </widget>
+   <addaction name="menuFile"/>
+   <addaction name="menuCourses"/>
+   <addaction name="menuLearning"/>
+   <addaction name="menuHelp"/>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+  <action name="actionRefresh">
+   <property name="text">
+    <string>Refresh</string>
+   </property>
+  </action>
+  <action name="actionLogout">
+   <property name="text">
+    <string>Logout</string>
+   </property>
+  </action>
+  <action name="actionExit">
+   <property name="text">
+    <string>Exit</string>
+   </property>
+  </action>
+  <action name="actionViewMyCourses">
+   <property name="text">
+    <string>View My Courses</string>
+   </property>
+  </action>
+  <action name="actionBrowseCatalog">
+   <property name="text">
+    <string>Browse Course Catalog</string>
+   </property>
+  </action>
+  <action name="actionViewSchedule">
+   <property name="text">
+    <string>View Schedule</string>
+   </property>
+  </action>
+  <action name="actionViewLessons">
+   <property name="text">
+    <string>View Lessons &amp; Exercises</string>
+   </property>
+  </action>
+  <action name="actionViewGrades">
+   <property name="text">
+    <string>View Grades</string>
+   </property>
+  </action>
+  <action name="actionAbout">
+   <property name="text">
+    <string>About</string>
+   </property>
+  </action>
+  <action name="actionHelp">
+   <property name="text">
+    <string>Help</string>
+   </property>
+  </action>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  # MySQL Database Service
+  db:
+    image: mysql:8.0
+    container_name: language_school_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: language_school
+      MYSQL_USER: school_user
+      MYSQL_PASSWORD: school_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    command: --default-authentication-plugin=mysql_native_password
+    networks:
+      - language_school_network
+
+  # PhpMyAdmin Service (optional, for database management)
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: language_school_phpmyadmin
+    restart: always
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      MYSQL_ROOT_PASSWORD: rootpassword
+    ports:
+      - "8080:80"
+    depends_on:
+      - db
+    networks:
+      - language_school_network
+
+volumes:
+  mysql_data:
+    driver: local
+
+networks:
+  language_school_network:
+    driver: bridge

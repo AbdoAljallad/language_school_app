@@ -1,0 +1,853 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>AdminDashboard</class>
+ <widget class="QMainWindow" name="AdminDashboard">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1024</width>
+    <height>768</height>
+   </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>1024</width>
+    <height>768</height>
+   </size>
+  </property>
+  <property name="windowTitle">
+   <string>Language School - Admin Dashboard</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">QMainWindow {
+    background-color: #f5f5f5;
+}
+QTabWidget::pane {
+    border: 1px solid #bdc3c7;
+    background-color: white;
+}
+QTabBar::tab {
+    background-color: #ecf0f1;
+    border: 1px solid #bdc3c7;
+    padding: 8px 16px;
+    margin-right: 2px;
+}
+QTabBar::tab:selected {
+    background-color: white;
+    border-bottom-color: white;
+}
+QTableWidget {
+    border: 1px solid #bdc3c7;
+    gridline-color: #ecf0f1;
+    selection-background-color: #3498db;
+    selection-color: white;
+}
+QTableWidget::item {
+    padding: 4px;
+}
+QHeaderView::section {
+    background-color: #ecf0f1;
+    border: 1px solid #bdc3c7;
+    padding: 4px;
+}
+QPushButton {
+    background-color: #3498db;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 16px;
+}
+QPushButton:hover {
+    background-color: #2980b9;
+}
+QPushButton:pressed {
+    background-color: #1f6aa5;
+}
+QPushButton#logoutButton {
+    background-color: #e74c3c;
+}
+QPushButton#logoutButton:hover {
+    background-color: #c0392b;
+}
+QLineEdit, QComboBox, QDateEdit {
+    padding: 6px;
+    border: 1px solid #bdc3c7;
+    border-radius: 4px;
+}
+QLineEdit:focus, QComboBox:focus, QDateEdit:focus {
+    border: 1px solid #3498db;
+}
+QLabel#welcomeLabel {
+    font-size: 16px;
+    font-weight: bold;
+    color: #2c3e50;
+}</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QVBoxLayout" name="verticalLayout">
+    <property name="spacing">
+     <number>10</number>
+    </property>
+    <property name="leftMargin">
+     <number>20</number>
+    </property>
+    <property name="topMargin">
+     <number>20</number>
+    </property>
+    <property name="rightMargin">
+     <number>20</number>
+    </property>
+    <property name="bottomMargin">
+     <number>20</number>
+    </property>
+    <item>
+     <layout class="QHBoxLayout" name="headerLayout">
+      <item>
+       <widget class="QLabel" name="welcomeLabel">
+        <property name="text">
+         <string>Welcome, Admin</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="horizontalSpacer">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QPushButton" name="logoutButton">
+        <property name="text">
+         <string>Logout</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+    <item>
+     <widget class="QTabWidget" name="tabWidget">
+      <property name="currentIndex">
+       <number>0</number>
+      </property>
+      <widget class="QWidget" name="usersTab">
+       <attribute name="title">
+        <string>Users</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_2">
+        <item>
+         <layout class="QHBoxLayout" name="usersFilterLayout">
+          <item>
+           <widget class="QLineEdit" name="userSearchInput">
+            <property name="placeholderText">
+             <string>Search users...</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="userTypeLabel">
+            <property name="text">
+             <string>User Type:</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="userTypeFilterComboBox">
+            <item>
+             <property name="text">
+              <string>All Users</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Admin</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Teacher</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Student</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="addUserButton">
+            <property name="text">
+             <string>Add User</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <widget class="QTableWidget" name="usersTable">
+          <property name="editTriggers">
+           <set>QAbstractItemView::NoEditTriggers</set>
+          </property>
+          <property name="selectionBehavior">
+           <enum>QAbstractItemView::SelectRows</enum>
+          </property>
+          <property name="sortingEnabled">
+           <bool>true</bool>
+          </property>
+          <column>
+           <property name="text">
+            <string>ID</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Username</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>First Name</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Last Name</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Email</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>User Type</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Active</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Actions</string>
+           </property>
+          </column>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="coursesTab">
+       <attribute name="title">
+        <string>Courses</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_3">
+        <item>
+         <layout class="QHBoxLayout" name="coursesFilterLayout">
+          <item>
+           <widget class="QLineEdit" name="courseSearchInput">
+            <property name="placeholderText">
+             <string>Search courses...</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="courseLanguageLabel">
+            <property name="text">
+             <string>Language:</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="courseLanguageFilterComboBox">
+            <item>
+             <property name="text">
+              <string>All Languages</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>English</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Spanish</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>French</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>German</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="courseLevelLabel">
+            <property name="text">
+             <string>Level:</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="courseLevelFilterComboBox">
+            <item>
+             <property name="text">
+              <string>All Levels</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>A1</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>A2</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>B1</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>B2</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>C1</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>C2</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="addCourseButton">
+            <property name="text">
+             <string>Add Course</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <widget class="QTableWidget" name="coursesTable">
+          <property name="editTriggers">
+           <set>QAbstractItemView::NoEditTriggers</set>
+          </property>
+          <property name="selectionBehavior">
+           <enum>QAbstractItemView::SelectRows</enum>
+          </property>
+          <property name="sortingEnabled">
+           <bool>true</bool>
+          </property>
+          <column>
+           <property name="text">
+            <string>ID</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Name</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Language</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Level</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Teacher</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Price</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Active</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Actions</string>
+           </property>
+          </column>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="schedulesTab">
+       <attribute name="title">
+        <string>Schedules</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_4">
+        <item>
+         <layout class="QHBoxLayout" name="schedulesFilterLayout">
+          <item>
+           <widget class="QLabel" name="scheduleFilterLabel">
+            <property name="text">
+             <string>Course:</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="scheduleFilterComboBox">
+            <item>
+             <property name="text">
+              <string>All Courses</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="scheduleDateLabel">
+            <property name="text">
+             <string>Date:</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QDateEdit" name="scheduleDateEdit">
+            <property name="calendarPopup">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="horizontalSpacer_2">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item>
+           <widget class="QPushButton" name="addScheduleButton">
+            <property name="text">
+             <string>Add Schedule</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <widget class="QTableWidget" name="schedulesTable">
+          <property name="editTriggers">
+           <set>QAbstractItemView::NoEditTriggers</set>
+          </property>
+          <property name="selectionBehavior">
+           <enum>QAbstractItemView::SelectRows</enum>
+          </property>
+          <property name="sortingEnabled">
+           <bool>true</bool>
+          </property>
+          <column>
+           <property name="text">
+            <string>ID</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Course</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Day</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Start Time</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>End Time</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Room</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Teacher</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Actions</string>
+           </property>
+          </column>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="paymentsTab">
+       <attribute name="title">
+        <string>Payments</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_5">
+        <item>
+         <layout class="QHBoxLayout" name="paymentsFilterLayout">
+          <item>
+           <widget class="QLineEdit" name="paymentSearchInput">
+            <property name="placeholderText">
+             <string>Search payments...</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="paymentStatusLabel">
+            <property name="text">
+             <string>Status:</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="paymentStatusFilterComboBox">
+            <item>
+             <property name="text">
+              <string>All Status</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Pending</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Paid</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Overdue</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="addPaymentButton">
+            <property name="text">
+             <string>Add Payment</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <widget class="QTableWidget" name="paymentsTable">
+          <property name="editTriggers">
+           <set>QAbstractItemView::NoEditTriggers</set>
+          </property>
+          <property name="selectionBehavior">
+           <enum>QAbstractItemView::SelectRows</enum>
+          </property>
+          <property name="sortingEnabled">
+           <bool>true</bool>
+          </property>
+          <column>
+           <property name="text">
+            <string>ID</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Student</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Course</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Amount</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Date</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Status</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Actions</string>
+           </property>
+          </column>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="reportsTab">
+       <attribute name="title">
+        <string>Reports</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_6">
+        <item>
+         <widget class="QGroupBox" name="reportOptionsGroupBox">
+          <property name="title">
+           <string>Report Options</string>
+          </property>
+          <layout class="QGridLayout" name="gridLayout">
+           <item row="0" column="0">
+            <widget class="QLabel" name="reportTypeLabel">
+             <property name="text">
+              <string>Report Type:</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="1">
+            <widget class="QComboBox" name="reportTypeComboBox">
+             <item>
+              <property name="text">
+               <string>Student Enrollment</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Course Revenue</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Teacher Performance</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Student Attendance</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Payment History</string>
+              </property>
+             </item>
+            </widget>
+           </item>
+           <item row="1" column="0">
+            <widget class="QLabel" name="reportDateRangeLabel">
+             <property name="text">
+              <string>Date Range:</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="1">
+            <layout class="QHBoxLayout" name="dateRangeLayout">
+             <item>
+              <widget class="QDateEdit" name="reportStartDateEdit">
+               <property name="calendarPopup">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="toLabel">
+               <property name="text">
+                <string>to</string>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignCenter</set>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QDateEdit" name="reportEndDateEdit">
+               <property name="calendarPopup">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item row="2" column="0">
+            <widget class="QLabel" name="reportFormatLabel">
+             <property name="text">
+              <string>Format:</string>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="1">
+            <widget class="QComboBox" name="reportFormatComboBox">
+             <item>
+              <property name="text">
+               <string>PDF</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Excel</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>CSV</string>
+              </property>
+             </item>
+            </widget>
+           </item>
+           <item row="3" column="1">
+            <layout class="QHBoxLayout" name="reportButtonsLayout">
+             <item>
+              <widget class="QPushButton" name="generateReportButton">
+               <property name="text">
+                <string>Generate Report</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="exportReportButton">
+               <property name="enabled">
+                <bool>false</bool>
+               </property>
+               <property name="text">
+                <string>Export Report</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <widget class="QTableWidget" name="reportResultsTable">
+          <property name="editTriggers">
+           <set>QAbstractItemView::NoEditTriggers</set>
+          </property>
+          <property name="selectionBehavior">
+           <enum>QAbstractItemView::SelectRows</enum>
+          </property>
+          <property name="sortingEnabled">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>1024</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>File</string>
+    </property>
+    <addaction name="actionExport"/>
+    <addaction name="actionPrint"/>
+    <addaction name="separator"/>
+    <addaction name="actionLogout"/>
+    <addaction name="actionExit"/>
+   </widget>
+   <widget class="QMenu" name="menuEdit">
+    <property name="title">
+     <string>Edit</string>
+    </property>
+    <addaction name="actionPreferences"/>
+   </widget>
+   <widget class="QMenu" name="menuHelp">
+    <property name="title">
+     <string>Help</string>
+    </property>
+    <addaction name="actionDocumentation"/>
+    <addaction name="actionAbout"/>
+   </widget>
+   <addaction name="menuFile"/>
+   <addaction name="menuEdit"/>
+   <addaction name="menuHelp"/>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+  <action name="actionExport">
+   <property name="text">
+    <string>Export...</string>
+   </property>
+  </action>
+  <action name="actionPrint">
+   <property name="text">
+    <string>Print...</string>
+   </property>
+  </action>
+  <action name="actionLogout">
+   <property name="text">
+    <string>Logout</string>
+   </property>
+  </action>
+  <action name="actionExit">
+   <property name="text">
+    <string>Exit</string>
+   </property>
+  </action>
+  <action name="actionPreferences">
+   <property name="text">
+    <string>Preferences</string>
+   </property>
+  </action>
+  <action name="actionDocumentation">
+   <property name="text">
+    <string>Documentation</string>
+   </property>
+  </action>
+  <action name="actionAbout">
+   <property name="text">
+    <string>About</string>
+   </property>
+  </action>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

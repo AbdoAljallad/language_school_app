@@ -1,0 +1,821 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>TeacherDashboard</class>
+ <widget class="QMainWindow" name="TeacherDashboard">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1024</width>
+    <height>768</height>
+   </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>1024</width>
+    <height>768</height>
+   </size>
+  </property>
+  <property name="windowTitle">
+   <string>Language School - Teacher Dashboard</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">QMainWindow {
+    background-color: #f5f5f5;
+}
+QTabWidget::pane {
+    border: 1px solid #bdc3c7;
+    background-color: white;
+}
+QTabBar::tab {
+    background-color: #ecf0f1;
+    border: 1px solid #bdc3c7;
+    padding: 8px 16px;
+    margin-right: 2px;
+}
+QTabBar::tab:selected {
+    background-color: white;
+    border-bottom-color: white;
+}
+QTableWidget {
+    border: 1px solid #bdc3c7;
+    gridline-color: #ecf0f1;
+    selection-background-color: #3498db;
+    selection-color: white;
+}
+QTableWidget::item {
+    padding: 4px;
+}
+QHeaderView::section {
+    background-color: #ecf0f1;
+    border: 1px solid #bdc3c7;
+    padding: 4px;
+}
+QPushButton {
+    background-color: #3498db;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 16px;
+}
+QPushButton:hover {
+    background-color: #2980b9;
+}
+QPushButton:pressed {
+    background-color: #1f6aa5;
+}
+QPushButton#logoutButton {
+    background-color: #e74c3c;
+}
+QPushButton#logoutButton:hover {
+    background-color: #c0392b;
+}
+QLineEdit, QComboBox, QDateEdit {
+    padding: 6px;
+    border: 1px solid #bdc3c7;
+    border-radius: 4px;
+}
+QLineEdit:focus, QComboBox:focus, QDateEdit:focus {
+    border: 1px solid #3498db;
+}
+QLabel#welcomeLabel {
+    font-size: 16px;
+    font-weight: bold;
+    color: #2c3e50;
+}</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QVBoxLayout" name="verticalLayout">
+    <property name="spacing">
+     <number>10</number>
+    </property>
+    <property name="leftMargin">
+     <number>20</number>
+    </property>
+    <property name="topMargin">
+     <number>20</number>
+    </property>
+    <property name="rightMargin">
+     <number>20</number>
+    </property>
+    <property name="bottomMargin">
+     <number>20</number>
+    </property>
+    <item>
+     <layout class="QHBoxLayout" name="headerLayout">
+      <item>
+       <widget class="QLabel" name="welcomeLabel">
+        <property name="text">
+         <string>Welcome, Teacher</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="horizontalSpacer">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QPushButton" name="logoutButton">
+        <property name="text">
+         <string>Logout</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+    <item>
+     <widget class="QTabWidget" name="tabWidget">
+      <property name="currentIndex">
+       <number>0</number>
+      </property>
+      <widget class="QWidget" name="coursesTab">
+       <attribute name="title">
+        <string>My Courses</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_2">
+        <item>
+         <layout class="QHBoxLayout" name="coursesFilterLayout">
+          <item>
+           <widget class="QLineEdit" name="courseSearchInput">
+            <property name="placeholderText">
+             <string>Search courses...</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="courseLanguageLabel">
+            <property name="text">
+             <string>Language:</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="courseLanguageFilterComboBox">
+            <item>
+             <property name="text">
+              <string>All Languages</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>English</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Spanish</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>French</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>German</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="courseLevelLabel">
+            <property name="text">
+             <string>Level:</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="courseLevelFilterComboBox">
+            <item>
+             <property name="text">
+              <string>All Levels</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>A1</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>A2</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>B1</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>B2</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>C1</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>C2</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <widget class="QTableWidget" name="coursesTable">
+          <property name="editTriggers">
+           <set>QAbstractItemView::NoEditTriggers</set>
+          </property>
+          <property name="selectionBehavior">
+           <enum>QAbstractItemView::SelectRows</enum>
+          </property>
+          <property name="sortingEnabled">
+           <bool>true</bool>
+          </property>
+          <column>
+           <property name="text">
+            <string>ID</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Name</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Language</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Level</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Students</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Schedule</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Actions</string>
+           </property>
+          </column>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="lessonsTab">
+       <attribute name="title">
+        <string>Lessons</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_3">
+        <item>
+         <layout class="QHBoxLayout" name="lessonsFilterLayout">
+          <item>
+           <widget class="QLabel" name="lessonCourseLabel">
+            <property name="text">
+             <string>Course:</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="lessonCourseFilterComboBox">
+            <item>
+             <property name="text">
+              <string>All Courses</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+          <item>
+           <spacer name="horizontalSpacer_2">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item>
+           <widget class="QPushButton" name="addLessonButton">
+            <property name="text">
+             <string>Add Lesson</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <widget class="QTableWidget" name="lessonsTable">
+          <property name="editTriggers">
+           <set>QAbstractItemView::NoEditTriggers</set>
+          </property>
+          <property name="selectionBehavior">
+           <enum>QAbstractItemView::SelectRows</enum>
+          </property>
+          <property name="sortingEnabled">
+           <bool>true</bool>
+          </property>
+          <column>
+           <property name="text">
+            <string>ID</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Course</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Title</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Date</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Exercises</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Actions</string>
+           </property>
+          </column>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="studentsTab">
+       <attribute name="title">
+        <string>Students</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_4">
+        <item>
+         <layout class="QHBoxLayout" name="studentsFilterLayout">
+          <item>
+           <widget class="QLineEdit" name="studentSearchInput">
+            <property name="placeholderText">
+             <string>Search students...</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="studentCourseLabel">
+            <property name="text">
+             <string>Course:</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="studentCourseFilterComboBox">
+            <item>
+             <property name="text">
+              <string>All Courses</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <widget class="QTableWidget" name="studentsTable">
+          <property name="editTriggers">
+           <set>QAbstractItemView::NoEditTriggers</set>
+          </property>
+          <property name="selectionBehavior">
+           <enum>QAbstractItemView::SelectRows</enum>
+          </property>
+          <property name="sortingEnabled">
+           <bool>true</bool>
+          </property>
+          <column>
+           <property name="text">
+            <string>ID</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>First Name</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Last Name</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Email</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Course</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Progress</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Actions</string>
+           </property>
+          </column>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="attendanceTab">
+       <attribute name="title">
+        <string>Attendance</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_5">
+        <item>
+         <layout class="QHBoxLayout" name="attendanceFilterLayout">
+          <item>
+           <widget class="QLabel" name="attendanceCourseLabel">
+            <property name="text">
+             <string>Course:</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="attendanceCourseFilterComboBox">
+            <item>
+             <property name="text">
+              <string>All Courses</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="attendanceDateLabel">
+            <property name="text">
+             <string>Date:</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QDateEdit" name="attendanceDateEdit">
+            <property name="calendarPopup">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="horizontalSpacer_3">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item>
+           <widget class="QPushButton" name="saveAttendanceButton">
+            <property name="text">
+             <string>Save Attendance</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <widget class="QTableWidget" name="attendanceTable">
+          <property name="selectionBehavior">
+           <enum>QAbstractItemView::SelectRows</enum>
+          </property>
+          <property name="sortingEnabled">
+           <bool>true</bool>
+          </property>
+          <column>
+           <property name="text">
+            <string>ID</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Student</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Course</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Date</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Present</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Notes</string>
+           </property>
+          </column>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="gradesTab">
+       <attribute name="title">
+        <string>Grades</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_6">
+        <item>
+         <layout class="QHBoxLayout" name="gradesFilterLayout">
+          <item>
+           <widget class="QLabel" name="gradesCourseLabel">
+            <property name="text">
+             <string>Course:</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="gradesCourseFilterComboBox">
+            <item>
+             <property name="text">
+              <string>All Courses</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="gradesTypeLabel">
+            <property name="text">
+             <string>Type:</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="gradesTypeFilterComboBox">
+            <item>
+             <property name="text">
+              <string>All Types</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Exercises</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Tests</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+          <item>
+           <spacer name="horizontalSpacer_4">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item>
+           <widget class="QPushButton" name="saveGradesButton">
+            <property name="text">
+             <string>Save Grades</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <widget class="QTableWidget" name="gradesTable">
+          <property name="selectionBehavior">
+           <enum>QAbstractItemView::SelectRows</enum>
+          </property>
+          <property name="sortingEnabled">
+           <bool>true</bool>
+          </property>
+          <column>
+           <property name="text">
+            <string>ID</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Student</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Course</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Type</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Title</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Grade</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Feedback</string>
+           </property>
+          </column>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="messagesTab">
+       <attribute name="title">
+        <string>Messages</string>
+       </attribute>
+       <layout class="QHBoxLayout" name="horizontalLayout">
+        <item>
+         <widget class="QWidget" name="chatListWidget" native="true">
+          <property name="minimumSize">
+           <size>
+            <width>250</width>
+            <height>0</height>
+           </size>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>300</width>
+            <height>16777215</height>
+           </size>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout_7">
+           <item>
+            <widget class="QLabel" name="chatsLabel">
+             <property name="text">
+              <string>Chats</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLineEdit" name="chatSearchInput">
+             <property name="placeholderText">
+              <string>Search chats...</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="newChatButton">
+             <property name="text">
+              <string>New Chat</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QListWidget" name="chatListView"/>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <widget class="QWidget" name="chatWidget" native="true">
+          <layout class="QVBoxLayout" name="verticalLayout_8">
+           <item>
+            <widget class="QLabel" name="chatTitleLabel">
+             <property name="text">
+              <string>Select a chat to start messaging</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QListWidget" name="messagesListView">
+             <property name="alternatingRowColors">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <layout class="QHBoxLayout" name="messageInputLayout">
+             <item>
+              <widget class="QTextEdit" name="messageInput">
+               <property name="maximumSize">
+                <size>
+                 <width>16777215</width>
+                 <height>80</height>
+                </size>
+               </property>
+               <property name="placeholderText">
+                <string>Type a message...</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="sendMessageButton">
+               <property name="text">
+                <string>Send</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+          </layout>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>1024</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>File</string>
+    </property>
+    <addaction name="actionLogout"/>
+    <addaction name="separator"/>
+    <addaction name="actionExit"/>
+   </widget>
+   <widget class="QMenu" name="menuHelp">
+    <property name="title">
+     <string>Help</string>
+    </property>
+    <addaction name="actionAbout"/>
+   </widget>
+   <addaction name="menuFile"/>
+   <addaction name="menuHelp"/>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+  <action name="actionLogout">
+   <property name="text">
+    <string>Logout</string>
+   </property>
+  </action>
+  <action name="actionExit">
+   <property name="text">
+    <string>Exit</string>
+   </property>
+  </action>
+  <action name="actionAbout">
+   <property name="text">
+    <string>About</string>
+   </property>
+  </action>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
