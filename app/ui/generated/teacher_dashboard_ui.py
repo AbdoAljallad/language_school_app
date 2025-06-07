@@ -112,6 +112,11 @@ class Ui_TeacherDashboard(object):
         self.logoutButton.setIcon(icon)
         self.logoutButton.setObjectName("logoutButton")
         self.headerLayout.addWidget(self.logoutButton)
+        # Add Profile button to header
+        self.profileButton = QtWidgets.QPushButton(self.centralwidget)
+        self.profileButton.setObjectName("profileButton")
+        self.profileButton.setText("Profile")
+        self.headerLayout.insertWidget(self.headerLayout.count()-1, self.profileButton)
         self.verticalLayout.addLayout(self.headerLayout)
         self.tabWidget = QtWidgets.QTabWidget(self.centralwidget)
         self.tabWidget.setObjectName("tabWidget")
@@ -349,6 +354,8 @@ class Ui_TeacherDashboard(object):
         self.menuStudents.setObjectName("menuStudents")
         self.menuHelp = QtWidgets.QMenu(self.menubar)
         self.menuHelp.setObjectName("menuHelp")
+        self.menuEdit = QtWidgets.QMenu(self.menubar)
+        self.menuEdit.setObjectName("menuEdit")
         TeacherDashboard.setMenuBar(self.menubar)
         self.statusbar = QtWidgets.QStatusBar(TeacherDashboard)
         self.statusbar.setObjectName("statusbar")
@@ -373,6 +380,8 @@ class Ui_TeacherDashboard(object):
         self.actionAbout.setObjectName("actionAbout")
         self.actionHelp = QtWidgets.QAction(TeacherDashboard)
         self.actionHelp.setObjectName("actionHelp")
+        self.actionProfile = QtWidgets.QAction(TeacherDashboard)
+        self.actionProfile.setObjectName("actionProfile")
         self.menuFile.addAction(self.actionRefresh)
         self.menuFile.addSeparator()
         self.menuFile.addAction(self.actionLogout)
@@ -384,6 +393,7 @@ class Ui_TeacherDashboard(object):
         self.menuStudents.addAction(self.actionGradeStudents)
         self.menuHelp.addAction(self.actionAbout)
         self.menuHelp.addAction(self.actionHelp)
+        self.menuEdit.addAction(self.actionProfile)
         self.menubar.addAction(self.menuFile.menuAction())
         self.menubar.addAction(self.menuCourses.menuAction())
         self.menubar.addAction(self.menuStudents.menuAction())
@@ -489,6 +499,7 @@ class Ui_TeacherDashboard(object):
         self.menuCourses.setTitle(_translate("TeacherDashboard", "Courses"))
         self.menuStudents.setTitle(_translate("TeacherDashboard", "Students"))
         self.menuHelp.setTitle(_translate("TeacherDashboard", "Help"))
+        self.menuEdit.setTitle(_translate("TeacherDashboard", "Edit"))
         self.actionRefresh.setText(_translate("TeacherDashboard", "Refresh"))
         self.actionLogout.setText(_translate("TeacherDashboard", "Logout"))
         self.actionExit.setText(_translate("TeacherDashboard", "Exit"))
@@ -499,6 +510,7 @@ class Ui_TeacherDashboard(object):
         self.actionGradeStudents.setText(_translate("TeacherDashboard", "Grade Students"))
         self.actionAbout.setText(_translate("TeacherDashboard", "About"))
         self.actionHelp.setText(_translate("TeacherDashboard", "Help"))
+        self.actionProfile.setText(_translate("TeacherDashboard", "Profile"))
 
 
 if __name__ == "__main__":

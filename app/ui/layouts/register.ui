@@ -132,16 +132,30 @@ QLabel#versionLabel {
      </spacer>
     </item>
     <item>
-     <widget class="QLabel" name="fullNameLabel">
+     <widget class="QLabel" name="firstNameLabel">
       <property name="text">
-       <string>Full Name:</string>
+       <string>First Name:</string>
       </property>
      </widget>
     </item>
     <item>
-     <widget class="QLineEdit" name="fullNameInput">
+     <widget class="QLineEdit" name="firstNameInput">
       <property name="placeholderText">
-       <string>Enter your full name</string>
+       <string>Enter your first name</string>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QLabel" name="lastNameLabel">
+      <property name="text">
+       <string>Last Name:</string>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QLineEdit" name="lastNameInput">
+      <property name="placeholderText">
+       <string>Enter your last name</string>
       </property>
      </widget>
     </item>

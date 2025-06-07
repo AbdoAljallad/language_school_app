@@ -228,6 +228,66 @@ CREATE TABLE notifications (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+-- Create student dashboard stats table
+CREATE TABLE student_dashboard_stats (
+    student_id INT PRIMARY KEY,
+    enrolled_courses_count INT DEFAULT 0,
+    upcoming_lessons_count INT DEFAULT 0,
+    pending_exercises_count INT DEFAULT 0,
+    unread_messages_count INT DEFAULT 0,
+    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Create triggers for dashboard stats
+DELIMITER //
+
+-- Update enrolled courses count
+CREATE TRIGGER after_student_course_insert
+AFTER INSERT ON student_courses
+FOR EACH ROW
+BEGIN
+    INSERT INTO student_dashboard_stats (student_id, enrolled_courses_count)
+    VALUES (NEW.student_id, 1)
+    ON DUPLICATE KEY UPDATE
+    enrolled_courses_count = enrolled_courses_count + 1;
+END//
+
+CREATE TRIGGER after_student_course_delete 
+AFTER DELETE ON student_courses
+FOR EACH ROW 
+BEGIN
+    UPDATE student_dashboard_stats
+    SET enrolled_courses_count = enrolled_courses_count - 1
+    WHERE student_id = OLD.student_id;
+END//
+
+-- Update unread messages count
+CREATE TRIGGER after_message_insert
+AFTER INSERT ON chat_messages
+FOR EACH ROW
+BEGIN
+    UPDATE student_dashboard_stats s
+    JOIN chats c ON (NEW.chat_id = c.id)
+    SET s.unread_messages_count = s.unread_messages_count + 1
+    WHERE s.student_id IN (c.user1_id, c.user2_id)
+    AND s.student_id != NEW.sender_id;
+END//
+
+-- Update exercises count
+CREATE TRIGGER after_exercise_submit
+AFTER UPDATE ON student_exercise_submissions
+FOR EACH ROW
+BEGIN
+    IF NEW.status = 'submitted' AND OLD.status = 'not_submitted' THEN
+        UPDATE student_dashboard_stats
+        SET pending_exercises_count = pending_exercises_count - 1
+        WHERE student_id = NEW.student_id;
+    END IF;
+END//
+
+DELIMITER //
+
 -- Insert test data
 
 -- Insert admin user

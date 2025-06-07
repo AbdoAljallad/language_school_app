@@ -97,7 +97,7 @@ class MainWindow(QMainWindow):
         elif user.user_type == "student":
             if not self.student_dashboard:
                 self.student_dashboard = StudentDashboardView(user)
-                self.student_dashboard.logout.connect(self.handle_logout)
+                self.student_dashboard.logout_requested.connect(self.handle_logout)  # Fixed signal name
                 self.stacked_widget.addWidget(self.student_dashboard)
             else:
                 # Update user in existing dashboard

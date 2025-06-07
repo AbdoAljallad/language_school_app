@@ -9,9 +9,6 @@ from PyQt5.QtCore import pyqtSignal, Qt
 
 from app.ui.generated.login_ui import Ui_LoginWindow
 from app.models.user_model import User
-from app.views.admin_dashboard_view import AdminDashboardView
-from app.views.teacher_dashboard_view import TeacherDashboardView
-from app.views.student_dashboard_view import StudentDashboardView
 from app.views.register_view import RegisterView
 from app.utils.database import initialize_database
 
@@ -138,46 +135,10 @@ class LoginView(QMainWindow):
         user = User.authenticate(username, password)
         
         if user:
-            # Emit the login_successful signal
+            # Emit the login_successful signal and let main window handle dashboard
             self.login_successful.emit(user)
-            
-            # Open the appropriate dashboard based on user type
-            self._open_dashboard(user)
         else:
             # Show error message
             self.ui.errorLabel.setText("Invalid username or password")
             self.ui.passwordInput.clear()
             self.ui.passwordInput.setFocus()
-    
-    def _open_dashboard(self, user):
-        """
-        Open the appropriate dashboard based on user type.
-        
-        Args:
-            user (User): The authenticated user.
-        """
-        # Hide the login window
-        self.hide()
-        
-        # Create and show the appropriate dashboard
-        if user.user_type == 'admin':
-            dashboard = AdminDashboardView(user)
-        elif user.user_type == 'teacher':
-            dashboard = TeacherDashboardView(user)
-        elif user.user_type == 'student':
-            dashboard = StudentDashboardView(user)
-        else:
-            # This should never happen, but just in case
-            QMessageBox.critical(
-                self,
-                "Error",
-                f"Unknown user type: {user.user_type}"
-            )
-            self.show()
-            return
-        
-        # Connect the logout signal to show the login window again
-        dashboard.logout.connect(self.show)
-        
-        # Show the dashboard
-        dashboard.show()

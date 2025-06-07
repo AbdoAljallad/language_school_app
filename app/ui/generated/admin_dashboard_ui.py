@@ -105,6 +105,11 @@ class Ui_AdminDashboard(object):
         self.logoutButton.setIcon(icon)
         self.logoutButton.setObjectName("logoutButton")
         self.headerLayout.addWidget(self.logoutButton)
+        # Add Profile button to header
+        self.profileButton = QtWidgets.QPushButton(self.centralwidget)
+        self.profileButton.setObjectName("profileButton")
+        self.profileButton.setText("Profile")
+        self.headerLayout.insertWidget(self.headerLayout.count()-1, self.profileButton)
         self.verticalLayout.addLayout(self.headerLayout)
         self.tabWidget = QtWidgets.QTabWidget(self.centralwidget)
         self.tabWidget.setObjectName("tabWidget")
@@ -130,20 +135,9 @@ class Ui_AdminDashboard(object):
         self.verticalLayout_2.addLayout(self.usersToolbarLayout)
         self.usersTable = QtWidgets.QTableWidget(self.usersTab)
         self.usersTable.setObjectName("usersTable")
-        self.usersTable.setColumnCount(6)
-        self.usersTable.setRowCount(0)
-        item = QtWidgets.QTableWidgetItem()
-        self.usersTable.setHorizontalHeaderItem(0, item)
-        item = QtWidgets.QTableWidgetItem()
-        self.usersTable.setHorizontalHeaderItem(1, item)
-        item = QtWidgets.QTableWidgetItem()
-        self.usersTable.setHorizontalHeaderItem(2, item)
-        item = QtWidgets.QTableWidgetItem()
-        self.usersTable.setHorizontalHeaderItem(3, item)
-        item = QtWidgets.QTableWidgetItem()
-        self.usersTable.setHorizontalHeaderItem(4, item)
-        item = QtWidgets.QTableWidgetItem()
-        self.usersTable.setHorizontalHeaderItem(5, item)
+        self.usersTable.setColumnCount(8)
+        headers = ["ID", "Username", "First Name", "Last Name", "User Type", "Email", "Active", "Actions"]
+        self.usersTable.setHorizontalHeaderLabels(headers)
         self.verticalLayout_2.addWidget(self.usersTable)
         self.tabWidget.addTab(self.usersTab, "")
         self.coursesTab = QtWidgets.QWidget()
@@ -339,6 +333,8 @@ class Ui_AdminDashboard(object):
         self.menuReports.setObjectName("menuReports")
         self.menuHelp = QtWidgets.QMenu(self.menubar)
         self.menuHelp.setObjectName("menuHelp")
+        self.menuEdit = QtWidgets.QMenu(self.menubar)
+        self.menuEdit.setObjectName("menuEdit")
         AdminDashboard.setMenuBar(self.menubar)
         self.statusbar = QtWidgets.QStatusBar(AdminDashboard)
         self.statusbar.setObjectName("statusbar")
@@ -369,24 +365,36 @@ class Ui_AdminDashboard(object):
         self.actionAbout.setObjectName("actionAbout")
         self.actionHelp = QtWidgets.QAction(AdminDashboard)
         self.actionHelp.setObjectName("actionHelp")
-        self.menuFile.addAction(self.actionRefresh)
+        self.actionProfile = QtWidgets.QAction(AdminDashboard)
+        self.actionProfile.setObjectName("actionProfile")
+        # Create actions before they are used
+        self.actionEditUser = QtWidgets.QAction(AdminDashboard)
+        self.actionEditUser.setObjectName("actionEditUser")
+        self.actionDeleteUser = QtWidgets.QAction(AdminDashboard)
+        self.actionDeleteUser.setObjectName("actionDeleteUser")
+        self.actionExport = QtWidgets.QAction(AdminDashboard)
+        self.actionExport.setObjectName("actionExport")
+        self.actionPrint = QtWidgets.QAction(AdminDashboard)
+        self.actionPrint.setObjectName("actionPrint")
+        self.actionPreferences = QtWidgets.QAction(AdminDashboard)
+        self.actionPreferences.setObjectName("actionPreferences")
+        self.actionDocumentation = QtWidgets.QAction(AdminDashboard)
+        self.actionDocumentation.setObjectName("actionDocumentation")
+        
+        # Update menu structure to match UI file
+        self.menuFile.addAction(self.actionExport)
+        self.menuFile.addAction(self.actionPrint)
         self.menuFile.addSeparator()
         self.menuFile.addAction(self.actionLogout)
         self.menuFile.addAction(self.actionExit)
-        self.menuUsers.addAction(self.actionAddUser)
-        self.menuUsers.addAction(self.actionImportUsers)
-        self.menuUsers.addAction(self.actionExportUsers)
-        self.menuCourses.addAction(self.actionAddCourse)
-        self.menuCourses.addAction(self.actionImportCourses)
-        self.menuCourses.addAction(self.actionExportCourses)
-        self.menuReports.addAction(self.actionGenerateReport)
-        self.menuReports.addAction(self.actionExportReport)
+        
+        self.menuEdit.addAction(self.actionPreferences)
+        
+        self.menuHelp.addAction(self.actionDocumentation)
         self.menuHelp.addAction(self.actionAbout)
-        self.menuHelp.addAction(self.actionHelp)
+        
         self.menubar.addAction(self.menuFile.menuAction())
-        self.menubar.addAction(self.menuUsers.menuAction())
-        self.menubar.addAction(self.menuCourses.menuAction())
-        self.menubar.addAction(self.menuReports.menuAction())
+        self.menubar.addAction(self.menuEdit.menuAction())
         self.menubar.addAction(self.menuHelp.menuAction())
 
         self.retranslateUi(AdminDashboard)
@@ -411,9 +419,9 @@ class Ui_AdminDashboard(object):
         item = self.usersTable.horizontalHeaderItem(2)
         item.setText(_translate("AdminDashboard", "Full Name"))
         item = self.usersTable.horizontalHeaderItem(3)
-        item.setText(_translate("AdminDashboard", "Email"))
-        item = self.usersTable.horizontalHeaderItem(4)
         item.setText(_translate("AdminDashboard", "Type"))
+        item = self.usersTable.horizontalHeaderItem(4)
+        item.setText(_translate("AdminDashboard", "Email"))
         item = self.usersTable.horizontalHeaderItem(5)
         item.setText(_translate("AdminDashboard", "Actions"))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.usersTab), _translate("AdminDashboard", "Users"))
@@ -502,6 +510,7 @@ class Ui_AdminDashboard(object):
         self.menuCourses.setTitle(_translate("AdminDashboard", "Courses"))
         self.menuReports.setTitle(_translate("AdminDashboard", "Reports"))
         self.menuHelp.setTitle(_translate("AdminDashboard", "Help"))
+        self.menuEdit.setTitle(_translate("AdminDashboard", "Edit"))
         self.actionRefresh.setText(_translate("AdminDashboard", "Refresh"))
         self.actionLogout.setText(_translate("AdminDashboard", "Logout"))
         self.actionExit.setText(_translate("AdminDashboard", "Exit"))
@@ -515,6 +524,50 @@ class Ui_AdminDashboard(object):
         self.actionExportReport.setText(_translate("AdminDashboard", "Export Report"))
         self.actionAbout.setText(_translate("AdminDashboard", "About"))
         self.actionHelp.setText(_translate("AdminDashboard", "Help"))
+        self.actionProfile.setText(_translate("AdminDashboard", "Edit Profile"))
+        # Add new action translations
+        self.actionExport.setText(_translate("AdminDashboard", "Export..."))
+        self.actionPrint.setText(_translate("AdminDashboard", "Print..."))
+        self.actionPreferences.setText(_translate("AdminDashboard", "Preferences"))
+        self.actionDocumentation.setText(_translate("AdminDashboard", "Documentation"))
+        
+        # Set tooltips from UI file
+        self.actionEditUser.setToolTip(_translate("AdminDashboard", "Edit selected user"))
+        self.actionDeleteUser.setToolTip(_translate("AdminDashboard", "Delete selected user"))
+
+        # Set up users table
+        self.usersTable.setColumnCount(8)
+        headers = ["ID", "Username", "First Name", "Last Name", "Email", "User Type", "Active", "Actions"]
+        self.usersTable.setHorizontalHeaderLabels(headers)
+
+        # Make table read-only except Actions column
+        self.usersTable.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+        self.usersTable.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
+        self.usersTable.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
+
+        # Add context menu for users table
+        self.usersTable.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.usersTable.customContextMenuRequested.connect(self.show_user_context_menu)
+
+        # Set column widths
+        self.usersTable.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
+
+    def show_user_context_menu(self, pos):
+        """Show context menu for users table."""
+        menu = QtWidgets.QMenu()
+        edit_action = menu.addAction("Edit User")
+        delete_action = menu.addAction("Delete User")
+
+        # Get selected row
+        row = self.usersTable.rowAt(pos.y())
+        if row >= 0:
+            action = menu.exec_(self.usersTable.viewport().mapToGlobal(pos))
+            if action == edit_action:
+                user_id = self.usersTable.item(row, 0).text()
+                self.edit_user.emit(int(user_id))
+            elif action == delete_action:
+                user_id = self.usersTable.item(row, 0).text()
+                self.delete_user.emit(int(user_id))
 
 
 if __name__ == "__main__":

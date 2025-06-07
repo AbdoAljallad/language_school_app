@@ -4,7 +4,7 @@ User Model
 Represents a user in the system and provides methods for user-related operations.
 """
 
-from app.utils.database import execute_query, execute_transaction
+from app.utils.database import execute_query, execute_transaction, get_connection
 from app.utils.crypto import hash_password, verify_password
 
 class User:
@@ -300,59 +300,45 @@ class User:
             return False
     
     @staticmethod
-    def create(username, password, email, full_name, user_type, language_level=None, 
-               profile_image=None, phone=None, address=None, is_active=True):
-        """
-        Create a new user with plaintext password.
-        
-        Args:
-            username (str): Username.
-            password (str): Password.
-            email (str): Email address.
-            full_name (str): Full name.
-            user_type (str): User type (admin, teacher, student).
-            language_level (str, optional): Language proficiency level. Defaults to None.
-            profile_image (str, optional): Profile image path. Defaults to None.
-            phone (str, optional): Phone number. Defaults to None.
-            address (str, optional): Address. Defaults to None.
-            is_active (bool, optional): Whether the user is active. Defaults to True.
-        
-        Returns:
-            User: User object if creation succeeds, None otherwise.
-        """
-        # Check if username or email already exists
-        if User.get_by_username(username) or User.get_by_email(email):
-            return None
-        
-        # Split full_name into first_name and last_name
-        first_name, last_name = full_name.split(' ', 1) if full_name and ' ' in full_name else (full_name, '')
-        
-        # Store password directly (plaintext)
-        plaintext_password = password
-        
-        # Insert the new user
-        query = """
-            INSERT INTO users 
-            (username, password, email, first_name, last_name, user_type, language_level, 
-             profile_image, phone, address, active)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        """
-        params = (
-            username, plaintext_password, email, first_name, last_name, user_type, language_level,
-            profile_image, phone, address, is_active
-        )
-        result = execute_query(query, params, commit=True)
-        
-        if result is not None and result > 0:
-            # Get the last inserted ID
-            query = "SELECT LAST_INSERT_ID() as id"
-            id_result = execute_query(query, fetch=True)
+    def create(username, password, email, full_name, user_type):
+        """Create a new user."""
+        try:
+            # Split full name into first and last name
+            name_parts = full_name.split(maxsplit=1)
+            if len(name_parts) < 2:
+                return None
             
-            if id_result and len(id_result) > 0:
-                user_id = id_result[0].get('id')
-                return User.get_by_id(user_id)
-        return None
-    
+            first_name, last_name = name_parts[0], name_parts[1]
+            
+            db = get_connection()
+            cursor = db.cursor(dictionary=True)
+            
+            query = """
+                INSERT INTO users 
+                (username, password, email, first_name, last_name, user_type, active)
+                VALUES (%s, %s, %s, %s, %s, %s, 1)
+            """
+            cursor.execute(query, (username, password, email, first_name, last_name, user_type))
+            db.commit()
+            
+            # Get the created user
+            user_id = cursor.lastrowid
+            user = User.get_by_id(user_id)
+            
+            return user
+            
+        except Exception as e:
+            print(f"Error creating user: {str(e)}")
+            if 'db' in locals():
+                db.rollback()
+            return None
+            
+        finally:
+            if 'cursor' in locals():
+                cursor.close()
+            if 'db' in locals():
+                db.close()
+
     def update_password(self, new_password):
         """
         Update the user's password (plaintext).

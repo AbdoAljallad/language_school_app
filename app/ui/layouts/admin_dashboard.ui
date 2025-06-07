@@ -224,12 +224,12 @@ QLabel#welcomeLabel {
           </column>
           <column>
            <property name="text">
-            <string>Email</string>
+            <string>User Type</string>
            </property>
           </column>
           <column>
            <property name="text">
-            <string>User Type</string>
+            <string>Email</string>
            </property>
           </column>
           <column>

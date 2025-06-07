@@ -8,14 +8,17 @@ functionality for the Language School Management System.
 from PyQt5.QtWidgets import (
     QMainWindow, QTableWidgetItem, QMessageBox, QDialog, QVBoxLayout, 
     QHBoxLayout, QLabel, QLineEdit, QComboBox, QDateEdit, QPushButton, 
-    QDialogButtonBox, QListWidgetItem, QWidget
+    QDialogButtonBox, QListWidgetItem, QWidget, QFileDialog
 )
-from PyQt5.QtCore import Qt, pyqtSlot, QDate
+from PyQt5.QtCore import Qt, pyqtSlot, QDate, pyqtSignal
+from datetime import datetime
 
 from app.ui.generated.admin_dashboard_ui import Ui_AdminDashboard
 from app.views.dashboard_view import BaseDashboardView
 from app.models.user_model import User
 from app.models.course_model import Course
+from app.models.schedule_model import Schedule
+from app.models.report_model import Report  # Add this import
 from app.utils import database
 from app.utils.crypto import hash_password  # Will use plaintext instead of hashing
 
@@ -33,6 +36,9 @@ class AdminDashboardView(BaseDashboardView):
     - Report generation
     """
     
+    # Add profile_updated signal
+    profile_updated = pyqtSignal()
+    
     def __init__(self, user, parent=None):
         """
         Initialize the admin dashboard view.
@@ -48,6 +54,11 @@ class AdminDashboardView(BaseDashboardView):
         # Set welcome message
         self.ui.welcomeLabel.setText(f"Welcome, {self.user.first_name} {self.user.last_name}")
         
+        # Set default dates to current date
+        current_date = QDate.currentDate()
+        self.ui.startDateEdit.setDate(current_date)
+        self.ui.endDateEdit.setDate(current_date)
+
         # Connect signals and slots
         self.ui.logoutButton.clicked.connect(self.handle_logout)
         self.ui.actionLogout.triggered.connect(self.handle_logout)
@@ -81,6 +92,11 @@ class AdminDashboardView(BaseDashboardView):
         self.ui.generateReportButton.clicked.connect(self.generate_report)
         self.ui.exportReportButton.clicked.connect(self.export_report)
         
+        # Connect profile signals
+        self.ui.profileButton.clicked.connect(self.open_profile_dialog)
+        self.ui.actionProfile.triggered.connect(self.open_profile_dialog)
+        self.profile_updated.connect(self.on_profile_updated)
+        
         # Initialize data
         self.refresh_data()
         
@@ -96,31 +112,24 @@ class AdminDashboardView(BaseDashboardView):
         
     def load_users(self):
         """Load users into the users table."""
-        # Clear the table
-        self.ui.usersTable.setRowCount(0)
-        
-        # Get search text and user type filter
-        search_text = self.ui.userSearchInput.text().lower()
-        user_type_index = self.ui.userTypeFilter.currentIndex()
-        user_type_filter = None
-        if user_type_index == 1:
-            user_type_filter = "admin"
-        elif user_type_index == 2:
-            user_type_filter = "teacher"
-        elif user_type_index == 3:
-            user_type_filter = "student"
-            
-        # Get users
-        query = "SELECT id, username, first_name, last_name, email, user_type, active FROM users"
-        params = ()
-        
-        if user_type_filter:
-            query += " WHERE user_type = %s"
-            params = (user_type_filter,)
-            
+        # Get users with proper columns
+        query = """
+            SELECT u.id, u.username, u.first_name, u.last_name, 
+                   u.email, u.user_type, u.active 
+            FROM users u
+        """
+        if self.ui.userTypeFilter.currentIndex() > 0:
+            query += " WHERE u.user_type = %s"
+            params = (self.ui.userTypeFilter.currentText().lower(),)
+        else:
+            params = ()
+
         users = database.execute_query(query, params, fetch=True)
         
-        # Populate the table
+        # Clear and populate table
+        self.ui.usersTable.setRowCount(0)
+        
+        search_text = self.ui.userSearchInput.text().lower()
         row = 0
         for user in users:
             # Apply search filter
@@ -295,30 +304,25 @@ class AdminDashboardView(BaseDashboardView):
         """Open dialog to edit a user."""
         # Get user data
         query = """
-            SELECT username, first_name, last_name, email, user_type, active
-            FROM users
-            WHERE id = %s
+            SELECT username, password, first_name, last_name, email, user_type, active
+            FROM users WHERE id = %s
         """
-        params = (user_id,)
-        result = database.execute_query(query, params, fetch=True)
-        user = result[0] if result and len(result) > 0 else None
-        
-        if not user:
+        result = database.execute_query(query, (user_id,), fetch=True)
+        if not result:
             QMessageBox.warning(self, "Error", "User not found.")
             return
-            
-        # Create a dialog
+
+        user = result[0]
+        
+        # Create dialog
         dialog = QDialog(self)
         dialog.setWindowTitle("Edit User")
         dialog.setMinimumWidth(400)
         
-        # Create layout
         layout = QVBoxLayout(dialog)
-        
-        # Add form fields
         form_layout = QVBoxLayout()
         
-        # Username (read-only)
+        # Username (readonly)
         username_layout = QHBoxLayout()
         username_label = QLabel("Username:")
         username_input = QLineEdit()
@@ -327,13 +331,13 @@ class AdminDashboardView(BaseDashboardView):
         username_layout.addWidget(username_label)
         username_layout.addWidget(username_input)
         form_layout.addLayout(username_layout)
-        
-        # Password (optional)
+
+        # New Password field
         password_layout = QHBoxLayout()
         password_label = QLabel("New Password:")
         password_input = QLineEdit()
         password_input.setEchoMode(QLineEdit.Password)
-        password_input.setPlaceholderText("Leave blank to keep current password")
+        password_input.setPlaceholderText("Leave empty to keep current password")
         password_layout.addWidget(password_label)
         password_layout.addWidget(password_input)
         form_layout.addLayout(password_layout)
@@ -369,32 +373,18 @@ class AdminDashboardView(BaseDashboardView):
         user_type_layout = QHBoxLayout()
         user_type_label = QLabel("User Type:")
         user_type_combo = QComboBox()
-        user_type_combo.addItem("Admin", "admin")
-        user_type_combo.addItem("Teacher", "teacher")
-        user_type_combo.addItem("Student", "student")
-        
-        # Set current user type
-        if user['user_type'] == "admin":
-            user_type_combo.setCurrentIndex(0)
-        elif user['user_type'] == "teacher":
-            user_type_combo.setCurrentIndex(1)
-        elif user['user_type'] == "student":
-            user_type_combo.setCurrentIndex(2)
-            
+        user_type_combo.addItems(['admin', 'teacher', 'student'])
+        user_type_combo.setCurrentText(user['user_type'])
         user_type_layout.addWidget(user_type_label)
         user_type_layout.addWidget(user_type_combo)
         form_layout.addLayout(user_type_layout)
         
-        # Active
+        # Active status
         active_layout = QHBoxLayout()
         active_label = QLabel("Active:")
         active_combo = QComboBox()
-        active_combo.addItem("Yes", 1)
-        active_combo.addItem("No", 0)
-        
-        # Set current active status
-        active_combo.setCurrentIndex(0 if user['active'] else 1)
-        
+        active_combo.addItems(['Yes', 'No'])
+        active_combo.setCurrentText('Yes' if user['active'] else 'No')
         active_layout.addWidget(active_label)
         active_layout.addWidget(active_combo)
         form_layout.addLayout(active_layout)
@@ -407,80 +397,99 @@ class AdminDashboardView(BaseDashboardView):
         buttons.rejected.connect(dialog.reject)
         layout.addWidget(buttons)
         
-        # Show dialog
         if dialog.exec_() == QDialog.Accepted:
-            # Get form values
-            password = password_input.text().strip()
-            first_name = first_name_input.text().strip()
-            last_name = last_name_input.text().strip()
-            email = email_input.text().strip()
-            user_type = user_type_combo.currentData()
-            active = active_combo.currentData()
-            
-            # Validate form
-            if not first_name or not last_name or not email:
-                QMessageBox.warning(self, "Validation Error", "First name, last name, and email are required.")
-                return
-                
-            # Update user
-            if password:
-                # Update with new password (plaintext)
-                query = """
-                    UPDATE users
-                    SET password = %s, first_name = %s, last_name = %s, email = %s, user_type = %s, active = %s
-                    WHERE id = %s
-                """
-                params = (password, first_name, last_name, email, user_type, active, user_id)
-            else:
-                # Update without changing password
-                query = """
-                    UPDATE users
-                    SET first_name = %s, last_name = %s, email = %s, user_type = %s, active = %s
-                    WHERE id = %s
-                """
-                params = (first_name, last_name, email, user_type, active, user_id)
-                
-            database.execute_query(query, params, commit=True)
-            
-            # Refresh users table
-            self.load_users()
-            
-            # Show success message
-            self.ui.statusbar.showMessage(f"User {username_input.text()} updated successfully.")
-            
+            # Start building the query
+            query = "UPDATE users SET"
+            params = []
+
+            # Add regular fields
+            params.extend([
+                first_name_input.text(),
+                last_name_input.text(),
+                email_input.text(),
+                user_type_combo.currentText(),
+                1 if active_combo.currentText() == 'Yes' else 0
+            ])
+
+            # Build the SET part of the query
+            set_clauses = [
+                "first_name = %s",
+                "last_name = %s", 
+                "email = %s",
+                "user_type = %s",
+                "active = %s"
+            ]
+
+            # Add password update if provided
+            new_password = password_input.text().strip()
+            if new_password:
+                set_clauses.append("password = %s")
+                params.append(new_password)
+
+            # Complete the query
+            query += " " + ", ".join(set_clauses)
+            query += ", updated_at = CURRENT_TIMESTAMP WHERE id = %s"
+            params.append(user_id)
+
+            # Execute update
+            try:
+                database.execute_query(query, params, commit=True)
+                self.load_users()
+                QMessageBox.information(self, "Success", "User updated successfully")
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"Failed to update user: {str(e)}")
+
     def delete_user(self, user_id):
-        """Delete a user."""
-        # Get user data
+        """Delete a user from the system."""
         query = "SELECT username FROM users WHERE id = %s"
-        params = (user_id,)
-        result = database.execute_query(query, params, fetch=True)
-        user = result[0] if result and len(result) > 0 else None
+        result = database.execute_query(query, (user_id,), fetch=True)
         
-        if not user:
-            QMessageBox.warning(self, "Error", "User not found.")
+        if not result:
+            QMessageBox.warning(self, "Error", "User not found")
             return
             
-        # Confirm deletion
+        user = result[0]
+        
         reply = QMessageBox.question(
-            self,
-            "Confirm Deletion",
+            self, "Confirm Deletion",
             f"Are you sure you want to delete user {user['username']}?",
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No
         )
         
         if reply == QMessageBox.Yes:
-            # Delete user
-            query = "DELETE FROM users WHERE id = %s"
-            params = (user_id,)
-            database.execute_query(query, params, commit=True)
+            # First delete related records
+            delete_queries = [
+                ("DELETE FROM student_courses WHERE student_id = %s", (user_id,)),
+                ("DELETE FROM student_lesson_progress WHERE student_id = %s", (user_id,)),
+                ("DELETE FROM student_exercise_submissions WHERE student_id = %s", (user_id,)),
+                ("DELETE FROM attendance WHERE student_id = %s", (user_id,)),
+                ("DELETE FROM payments WHERE student_id = %s", (user_id,)),
+                ("DELETE FROM chat_messages WHERE sender_id = %s", (user_id,)),
+                ("DELETE FROM chats WHERE user1_id = %s OR user2_id = %s", (user_id, user_id)),  # Fixed: pass user_id twice
+                ("DELETE FROM notifications WHERE user_id = %s", (user_id,)),
+                ("DELETE FROM users WHERE id = %s", (user_id,))
+            ]
             
-            # Refresh users table
-            self.load_users()
-            
-            # Show success message
-            self.ui.statusbar.showMessage(f"User {user['username']} deleted successfully.")
-            
+            # Execute all deletes in a transaction
+            try:
+                db = database.get_connection()
+                cursor = db.cursor()
+                
+                for query, params in delete_queries:  # Updated to use query and params pairs
+                    cursor.execute(query, params)
+                    
+                db.commit()
+                self.load_users()  # Refresh table
+                QMessageBox.information(self, "Success", "User deleted successfully")
+                
+            except Exception as e:
+                db.rollback()
+                QMessageBox.critical(self, "Error", f"Failed to delete user: {str(e)}")
+            finally:
+                cursor.close()
+                db.close()
+
     def load_courses(self):
         """Load courses into the courses table."""
         # Clear the table
@@ -702,7 +711,7 @@ class AdminDashboardView(BaseDashboardView):
                 VALUES (%s, %s, %s, %s, %s, %s, %s)
             """
             params = (name, language, level, description, price, teacher_id, active)
-            database.execute_query(query, params)
+            database.execute_query(query, params, commit=True)
             
             # Refresh courses table
             self.load_courses()
@@ -894,7 +903,7 @@ class AdminDashboardView(BaseDashboardView):
             self.ui.statusbar.showMessage(f"Course {name} updated successfully.")
             
     def delete_course(self, course_id):
-        """Delete a course."""
+        """Delete a course and all related records."""
         # Get course data
         query = "SELECT name FROM courses WHERE id = %s"
         params = (course_id,)
@@ -905,116 +914,84 @@ class AdminDashboardView(BaseDashboardView):
             QMessageBox.warning(self, "Error", "Course not found.")
             return
             
-        # Confirm deletion
         reply = QMessageBox.question(
-            self,
-            "Confirm Deletion",
+            self, "Confirm Deletion",
             f"Are you sure you want to delete course {course['name']}?",
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No
         )
         
         if reply == QMessageBox.Yes:
-            # Delete course
-            query = "DELETE FROM courses WHERE id = %s"
-            params = (course_id,)
-            database.execute_query(query, params, commit=True)
+            # Delete course and related records in a transaction
+            delete_queries = [
+                ("DELETE FROM student_courses WHERE course_id = %s", (course_id,)),
+                ("DELETE FROM schedules WHERE course_id = %s", (course_id,)),
+                ("DELETE FROM lessons WHERE course_id = %s", (course_id,)),
+                ("DELETE FROM courses WHERE id = %s", (course_id,))
+            ]
             
-            # Refresh courses table
-            self.load_courses()
-            
-            # Show success message
-            self.ui.statusbar.showMessage(f"Course {course['name']} deleted successfully.")
-            
+            try:
+                db = database.get_connection()
+                cursor = db.cursor()
+                
+                for query, params in delete_queries:
+                    cursor.execute(query, params)
+                    
+                db.commit()
+                self.load_courses()
+                self.ui.statusbar.showMessage(f"Course {course['name']} deleted successfully.")
+                
+            except Exception as e:
+                db.rollback()
+                QMessageBox.critical(self, "Error", f"Failed to delete course: {str(e)}")
+            finally:
+                cursor.close()
+                db.close()
+
     def load_schedules(self):
         """Load schedules into the schedules table."""
-        # Placeholder implementation - in a real app, this would query the database for schedules
-        # For now, we'll just show some sample data
-        
         # Clear the table
         self.ui.schedulesTable.setRowCount(0)
         
-        # Get selected course ID (or -1 for all courses)
+        # Get selected course ID and day
         course_id = self.ui.courseFilter.currentData()
+        day = self.ui.dayFilter.currentText()
+        if day == "All Days":
+            day = None
         
-        # Get selected day from combo box
-        selected_day = self.ui.dayFilter.currentText()
+        # Get schedules from database
+        schedules = Schedule.get_schedules(
+            course_id=course_id if course_id != -1 else None,
+            day=day
+        )
         
-        # Add some sample data
-        schedules = [
-            {
-                "id": 1,
-                "course_id": 1,
-                "course_name": "English B1",
-                "day_of_week": "Monday",
-                "start_time": "10:00",
-                "end_time": "11:30",
-                "room": "101",
-                "teacher": "John Smith"
-            },
-            {
-                "id": 2,
-                "course_id": 1,
-                "course_name": "English B1",
-                "day_of_week": "Wednesday",
-                "start_time": "10:00",
-                "end_time": "11:30",
-                "room": "101",
-                "teacher": "John Smith"
-            },
-            {
-                "id": 3,
-                "course_id": 2,
-                "course_name": "Spanish A2",
-                "day_of_week": "Tuesday",
-                "start_time": "14:00",
-                "end_time": "15:30",
-                "room": "203",
-                "teacher": "Maria Garcia"
-            },
-            {
-                "id": 4,
-                "course_id": 2,
-                "course_name": "Spanish A2",
-                "day_of_week": "Thursday",
-                "start_time": "14:00",
-                "end_time": "15:30",
-                "room": "203",
-                "teacher": "Maria Garcia"
-            }
-        ]
-        
-        # Filter schedules by course ID
-        if course_id != -1:
-            schedules = [s for s in schedules if s["course_id"] == course_id]
-            
         # Populate the table
         for row, schedule in enumerate(schedules):
             self.ui.schedulesTable.insertRow(row)
             
             # Add schedule data
-            self.ui.schedulesTable.setItem(row, 0, QTableWidgetItem(str(schedule["id"])))
-            self.ui.schedulesTable.setItem(row, 1, QTableWidgetItem(schedule["course_name"]))
-            self.ui.schedulesTable.setItem(row, 2, QTableWidgetItem(schedule["day_of_week"]))
-            self.ui.schedulesTable.setItem(row, 3, QTableWidgetItem(schedule["start_time"]))
-            self.ui.schedulesTable.setItem(row, 4, QTableWidgetItem(schedule["end_time"]))
-            self.ui.schedulesTable.setItem(row, 5, QTableWidgetItem(schedule["room"]))
-            self.ui.schedulesTable.setItem(row, 6, QTableWidgetItem(schedule["teacher"]))
+            self.ui.schedulesTable.setItem(row, 0, QTableWidgetItem(str(schedule['id'])))
+            self.ui.schedulesTable.setItem(row, 1, QTableWidgetItem(schedule['course_name']))
+            self.ui.schedulesTable.setItem(row, 2, QTableWidgetItem(schedule['day_of_week']))
+            self.ui.schedulesTable.setItem(row, 3, QTableWidgetItem(str(schedule['start_time'])))
+            self.ui.schedulesTable.setItem(row, 4, QTableWidgetItem(str(schedule['end_time'])))
+            self.ui.schedulesTable.setItem(row, 5, QTableWidgetItem(schedule['room']))
+            self.ui.schedulesTable.setItem(row, 6, QTableWidgetItem(
+                f"{schedule['first_name']} {schedule['last_name']}"
+            ))
             
-            # Add edit and delete buttons
-            edit_button = QPushButton("Edit")
-            edit_button.setProperty("schedule_id", schedule["id"])
-            edit_button.clicked.connect(lambda checked, sid=schedule["id"]: self.edit_schedule(sid))
-            
-            delete_button = QPushButton("Delete")
-            delete_button.setProperty("schedule_id", schedule["id"])
-            delete_button.clicked.connect(lambda checked, sid=schedule["id"]: self.delete_schedule(sid))
-            
-            # Create a widget to hold the buttons
+            # Add action buttons
             actions_widget = QWidget()
             actions_layout = QHBoxLayout(actions_widget)
-            actions_layout.addWidget(edit_button)
-            actions_layout.addWidget(delete_button)
+            
+            edit_btn = QPushButton("Edit")
+            edit_btn.clicked.connect(lambda x, s=schedule['id']: self.edit_schedule(s))
+            
+            delete_btn = QPushButton("Delete")
+            delete_btn.clicked.connect(lambda x, s=schedule['id']: self.delete_schedule(s))
+            
+            actions_layout.addWidget(edit_btn)
+            actions_layout.addWidget(delete_btn)
             actions_layout.setContentsMargins(0, 0, 0, 0)
             
             self.ui.schedulesTable.setCellWidget(row, 7, actions_widget)
@@ -1028,22 +1005,184 @@ class AdminDashboardView(BaseDashboardView):
         
     def add_schedule(self):
         """Open dialog to add a new schedule."""
-        # Placeholder implementation - in a real app, this would add a new schedule to the database
-        QMessageBox.information(self, "Add Schedule", "Schedule added successfully.")
-        self.load_schedules()
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Add Schedule")
+        dialog.setMinimumWidth(400)
         
+        layout = QVBoxLayout(dialog)
+        form_layout = QVBoxLayout()
+        
+        # Course selection
+        course_layout = QHBoxLayout()
+        course_label = QLabel("Course:")
+        course_combo = QComboBox()
+        
+        # Get active courses
+        query = """
+            SELECT id, name FROM courses 
+            WHERE active = 1 
+            ORDER BY name
+        """
+        courses = database.execute_query(query, fetch=True)
+        
+        for course in courses:
+            course_combo.addItem(course['name'], course['id'])
+            
+        course_layout.addWidget(course_label)
+        course_layout.addWidget(course_combo)
+        form_layout.addLayout(course_layout)
+        
+        # Day selection
+        day_layout = QHBoxLayout()
+        day_label = QLabel("Day:")
+        day_combo = QComboBox()
+        days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+        day_combo.addItems(days)
+        day_layout.addWidget(day_label)
+        day_layout.addWidget(day_combo)
+        form_layout.addLayout(day_layout)
+        
+        # Time selection
+        time_layout = QHBoxLayout()
+        start_label = QLabel("Time:")
+        start_time = QLineEdit()
+        start_time.setPlaceholderText("HH:MM")
+        end_time = QLineEdit()
+        end_time.setPlaceholderText("HH:MM")
+        time_layout.addWidget(start_label)
+        time_layout.addWidget(start_time)
+        time_layout.addWidget(QLabel("to"))
+        time_layout.addWidget(end_time)
+        form_layout.addLayout(time_layout)
+        
+        # Room
+        room_layout = QHBoxLayout()
+        room_label = QLabel("Room:")
+        room_input = QLineEdit()
+        room_layout.addWidget(room_label)
+        room_layout.addWidget(room_input)
+        form_layout.addLayout(room_layout)
+        
+        layout.addLayout(form_layout)
+        
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.accepted.connect(dialog.accept)
+        buttons.rejected.connect(dialog.reject)
+        layout.addWidget(buttons)
+        
+        if dialog.exec_() == QDialog.Accepted:
+            schedule = Schedule(
+                course_id=course_combo.currentData(),
+                day_of_week=day_combo.currentText(),
+                start_time=start_time.text(),
+                end_time=end_time.text(),
+                room=room_input.text()
+            )
+            
+            if schedule.save():
+                self.load_schedules()
+                QMessageBox.information(self, "Success", "Schedule added successfully")
+            else:
+                QMessageBox.critical(self, "Error", "Failed to add schedule")
+
     def edit_schedule(self, schedule_id):
         """Open dialog to edit a schedule."""
-        # Placeholder implementation - in a real app, this would edit a schedule in the database
-        QMessageBox.information(self, "Edit Schedule", f"Schedule {schedule_id} edited successfully.")
-        self.load_schedules()
+        # Get schedule data
+        query = """
+            SELECT s.*, c.name as course_name 
+            FROM schedules s
+            JOIN courses c ON s.course_id = c.id
+            WHERE s.id = %s
+        """
+        result = database.execute_query(query, (schedule_id,), fetch=True)
+        if not result:
+            QMessageBox.warning(self, "Error", "Schedule not found")
+            return
+            
+        schedule = result[0]
         
+        # Create edit dialog (similar to add dialog but populated)
+        dialog = QDialog(self)
+        dialog.setWindowTitle(f"Edit Schedule - {schedule['course_name']}")
+        dialog.setMinimumWidth(400)
+        
+        layout = QVBoxLayout(dialog)
+        form_layout = QVBoxLayout()
+        
+        # Course selection (readonly)
+        course_layout = QHBoxLayout()
+        course_label = QLabel("Course:")
+        course_input = QLineEdit()
+        course_input.setText(schedule['course_name'])
+        course_input.setReadOnly(True)
+        course_layout.addWidget(course_label)
+        course_layout.addWidget(course_input)
+        form_layout.addLayout(course_layout)
+
+        # Day selection
+        day_layout = QHBoxLayout()
+        day_label = QLabel("Day:")
+        day_combo = QComboBox()
+        days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+        day_combo.addItems(days)
+        day_combo.setCurrentText(schedule['day_of_week'])
+        day_layout.addWidget(day_label)
+        day_layout.addWidget(day_combo)
+        form_layout.addLayout(day_layout)
+        
+        # Time selection
+        time_layout = QHBoxLayout()
+        start_label = QLabel("Time:")
+        start_time = QLineEdit()
+        start_time.setPlaceholderText("HH:MM")
+        start_time.setText(schedule['start_time'])
+        end_time = QLineEdit()
+        end_time.setPlaceholderText("HH:MM")
+        end_time.setText(schedule['end_time'])
+        time_layout.addWidget(start_label)
+        time_layout.addWidget(start_time)
+        time_layout.addWidget(QLabel("to"))
+        time_layout.addWidget(end_time)
+        form_layout.addLayout(time_layout)
+        
+        # Room
+        room_layout = QHBoxLayout()
+        room_label = QLabel("Room:")
+        room_input = QLineEdit()
+        room_input.setText(schedule['room'])
+        room_layout.addWidget(room_label)
+        room_layout.addWidget(room_input)
+        form_layout.addLayout(room_layout)
+        
+        layout.addLayout(form_layout)
+        
+        # Add buttons
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.accepted.connect(dialog.accept)
+        buttons.rejected.connect(dialog.reject)
+        layout.addWidget(buttons)
+        
+        if dialog.exec_() == QDialog.Accepted:
+            # Update schedule data
+            schedule.day_of_week = day_combo.currentText()
+            schedule.start_time = start_time.text()
+            schedule.end_time = end_time.text()
+            schedule.room = room_input.text()
+            
+            if schedule.save():
+                self.load_schedules()
+                QMessageBox.information(self, "Success", "Schedule updated successfully")
+            else:
+                QMessageBox.critical(self, "Error", "Failed to update schedule")
+
     def delete_schedule(self, schedule_id):
         """Delete a schedule."""
-        # Placeholder implementation - in a real app, this would delete a schedule from the database
-        QMessageBox.information(self, "Delete Schedule", f"Schedule {schedule_id} deleted successfully.")
-        self.load_schedules()
-        
+        if Schedule.delete(schedule_id):
+            self.load_schedules()
+            QMessageBox.information(self, "Success", "Schedule deleted successfully")
+        else:
+            QMessageBox.critical(self, "Error", "Failed to delete schedule")
+
     def load_payments(self):
         """Load payments into the payments table."""
         # Placeholder implementation - in a real app, this would query the database for payments
@@ -1166,10 +1305,226 @@ class AdminDashboardView(BaseDashboardView):
         
     def generate_report(self):
         """Generate a report based on selected criteria."""
-        # Placeholder implementation - in a real app, this would generate a report based on selected criteria
-        QMessageBox.information(self, "Generate Report", "Report generated successfully.")
-        
+        try:
+            # Clear existing data
+            self.ui.reportsTable.setRowCount(0)
+            self.ui.reportsTable.setColumnCount(0)
+            self.ui.exportReportButton.setEnabled(False)
+            
+            # Get report parameters
+            report_type = self.ui.reportTypeComboBox.currentText().lower().replace(' ', '_')
+            start_date = self.ui.startDateEdit.date().toString('yyyy-MM-dd')
+            end_date = self.ui.endDateEdit.date().toString('yyyy-MM-dd')
+            
+            # Generate report
+            data = Report.generate_report(report_type, start_date, end_date)
+            
+            if not data:
+                self.ui.statusbar.showMessage("No data available for the selected criteria")
+                return
+            
+            # Set up table
+            self.ui.reportsTable.setColumnCount(len(data[0].keys()))
+            self.ui.reportsTable.setHorizontalHeaderLabels(data[0].keys())
+            
+            # Populate data
+            empty_report = True
+            for row, record in enumerate(data):
+                if any(v for v in record.values() if v not in (None, '', 0)):
+                    empty_report = False
+                self.ui.reportsTable.insertRow(row)
+                for col, (key, value) in enumerate(record.items()):
+                    display_value = str(value) if value not in (None, '') else '-'
+                    item = QTableWidgetItem(display_value)
+                    if isinstance(value, (int, float)):
+                        item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                    self.ui.reportsTable.setItem(row, col, item)
+            
+            # Enable export if we have data
+            self.ui.exportReportButton.setEnabled(not empty_report)
+            
+            # Format table
+            self.ui.reportsTable.resizeColumnsToContents()
+            self.ui.reportsTable.resizeRowsToContents()
+            
+            # Show status
+            if not empty_report:
+                self.ui.statusbar.showMessage(f"Report generated successfully - {len(data)} records found")
+            else:
+                self.ui.statusbar.showMessage("No data available for the selected criteria")
+            
+        except Exception as e:
+            self.ui.statusbar.showMessage(f"Error generating report: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Failed to generate report: {str(e)}")
+
     def export_report(self):
         """Export the generated report to a file."""
-        # Placeholder implementation - in a real app, this would export the report to a file
-        QMessageBox.information(self, "Export Report", "Report exported successfully.")
+        try:
+            # Check if we have data to export
+            if self.ui.reportsTable.rowCount() == 0:
+                QMessageBox.warning(self, "Export Report", "No data to export")
+                return
+                
+            # Get file name from save dialog
+            file_name, _ = QFileDialog.getSaveFileName(
+                self,
+                "Export Report",
+                "",
+                "CSV Files (*.csv)"  # Removed Excel option for now
+            )
+            
+            if not file_name:
+                return
+                
+            # Ensure file has .csv extension
+            if not file_name.endswith('.csv'):
+                file_name += '.csv'
+                
+            # Get report data from table
+            data = []
+            headers = [
+                self.ui.reportsTable.horizontalHeaderItem(col).text() 
+                for col in range(self.ui.reportsTable.columnCount())
+            ]
+                      
+            for row in range(self.ui.reportsTable.rowCount()):
+                record = {}
+                for col in range(self.ui.reportsTable.columnCount()):
+                    key = headers[col]
+                    value = self.ui.reportsTable.item(row, col).text()
+                    # Convert back to numbers if possible
+                    try:
+                        if '.' in value:
+                            value = float(value.replace('$', '').replace(',', ''))
+                        elif value.isdigit():
+                            value = int(value)
+                    except:
+                        pass
+                    record[key] = value
+                data.append(record)
+                
+            if Report.export_to_csv(data, file_name):
+                QMessageBox.information(self, "Success", f"Report exported to {file_name}")
+            else:
+                QMessageBox.warning(self, "Error", "Failed to export report")
+                
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to export report: {str(e)}")
+
+    def on_profile_updated(self):
+        """Handle profile update events."""
+        self.ui.welcomeLabel.setText(f"Welcome, {self.user.first_name} {self.user.last_name}")
+        self.ui.statusLabel.setText("Profile updated successfully")
+
+    def open_profile_dialog(self):
+        """Open dialog to edit user profile."""
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Edit Profile")
+        dialog.setMinimumWidth(400)
+        
+        layout = QVBoxLayout(dialog)
+        
+        # Add form fields
+        form_layout = QVBoxLayout()
+        
+        # First name
+        first_name_layout = QHBoxLayout()
+        first_name_label = QLabel("First Name:")
+        first_name_input = QLineEdit()
+        first_name_input.setText(self.user.first_name)
+        first_name_layout.addWidget(first_name_label)
+        first_name_layout.addWidget(first_name_input)
+        form_layout.addLayout(first_name_layout)
+        
+        # Last name
+        last_name_layout = QHBoxLayout()
+        last_name_label = QLabel("Last Name:")
+        last_name_input = QLineEdit()
+        last_name_input.setText(self.user.last_name)
+        last_name_layout.addWidget(last_name_label)
+        last_name_layout.addWidget(last_name_input)
+        form_layout.addLayout(last_name_layout)
+        
+        # Email
+        email_layout = QHBoxLayout()
+        email_label = QLabel("Email:")
+        email_input = QLineEdit()
+        email_input.setText(self.user.email)
+        email_layout.addWidget(email_label)
+        email_layout.addWidget(email_input)
+        form_layout.addLayout(email_layout)
+        
+        # Password
+        password_layout = QHBoxLayout()
+        password_label = QLabel("New Password:")
+        password_input = QLineEdit()
+        password_input.setEchoMode(QLineEdit.Password)
+        password_input.setPlaceholderText("Leave empty to keep current password")
+        password_layout.addWidget(password_label)
+        password_layout.addWidget(password_input)
+        form_layout.addLayout(password_layout)
+        
+        layout.addLayout(form_layout)
+        
+        # Add buttons
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.accepted.connect(dialog.accept)
+        buttons.rejected.connect(dialog.reject)
+        layout.addWidget(buttons)
+        
+        if dialog.exec_() == QDialog.Accepted:
+            # Get form values and validate
+            first_name = first_name_input.text().strip()
+            last_name = last_name_input.text().strip()
+            email = email_input.text().strip()
+            new_password = password_input.text().strip()
+            
+            if not first_name or not last_name or not email:
+                QMessageBox.warning(self, "Validation Error", "First name, last name and email are required.")
+                return
+            
+            try:
+                db = database.get_connection()
+                cursor = db.cursor()
+                
+                # Separate queries for with/without password update
+                if new_password:
+                    query = """
+                        UPDATE users 
+                        SET first_name = %s,
+                            last_name = %s,
+                            email = %s,
+                            password = %s,
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE id = %s
+                    """
+                    params = (first_name, last_name, email, new_password, self.user.user_id)
+                else:
+                    query = """
+                        UPDATE users 
+                        SET first_name = %s,
+                            last_name = %s,
+                            email = %s,
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE id = %s
+                    """
+                    params = (first_name, last_name, email, self.user.user_id)
+                
+                cursor.execute(query, params)
+                db.commit()
+                
+                # Update local user object
+                self.user.first_name = first_name
+                self.user.last_name = last_name
+                self.user.email = email
+                if new_password:
+                    self.user.password = new_password
+                
+                self.profile_updated.emit()
+                QMessageBox.information(self, "Success", "Profile updated successfully")
+                
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"Failed to update profile: {str(e)}")
+            finally:
+                cursor.close()
+                db.close()

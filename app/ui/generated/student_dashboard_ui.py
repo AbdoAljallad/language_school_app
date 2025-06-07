@@ -124,6 +124,11 @@ class Ui_StudentDashboard(object):
         self.logoutButton.setIcon(icon)
         self.logoutButton.setObjectName("logoutButton")
         self.headerLayout.addWidget(self.logoutButton)
+        # Add Profile button to header
+        self.profileButton = QtWidgets.QPushButton(self.centralwidget)
+        self.profileButton.setObjectName("profileButton")
+        self.profileButton.setText("Profile")
+        self.headerLayout.insertWidget(self.headerLayout.count()-1, self.profileButton)
         self.verticalLayout.addLayout(self.headerLayout)
         self.tabWidget = QtWidgets.QTabWidget(self.centralwidget)
         self.tabWidget.setObjectName("tabWidget")
@@ -527,6 +532,10 @@ class Ui_StudentDashboard(object):
         self.menuLearning.setObjectName("menuLearning")
         self.menuHelp = QtWidgets.QMenu(self.menubar)
         self.menuHelp.setObjectName("menuHelp")
+        # Add Profile menu
+        self.menuProfile = QtWidgets.QMenu(self.menubar)
+        self.menuProfile.setTitle("Profile")
+        self.menubar.addAction(self.menuProfile.menuAction())
         StudentDashboard.setMenuBar(self.menubar)
         self.statusbar = QtWidgets.QStatusBar(StudentDashboard)
         self.statusbar.setObjectName("statusbar")
@@ -551,6 +560,10 @@ class Ui_StudentDashboard(object):
         self.actionAbout.setObjectName("actionAbout")
         self.actionHelp = QtWidgets.QAction(StudentDashboard)
         self.actionHelp.setObjectName("actionHelp")
+        # Add actions to Profile menu
+        self.actionEditProfile = QtWidgets.QAction(StudentDashboard)
+        self.actionEditProfile.setText("Edit Profile")
+        self.menuProfile.addAction(self.actionEditProfile)
         self.menuFile.addAction(self.actionRefresh)
         self.menuFile.addSeparator()
         self.menuFile.addAction(self.actionLogout)

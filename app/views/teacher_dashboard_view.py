@@ -10,7 +10,7 @@ from PyQt5.QtWidgets import (
     QHBoxLayout, QLabel, QLineEdit, QComboBox, QDateEdit, QTextEdit, 
     QPushButton, QDialogButtonBox, QListWidgetItem, QWidget
 )
-from PyQt5.QtCore import Qt, pyqtSlot, QDate
+from PyQt5.QtCore import Qt, pyqtSlot, QDate, pyqtSignal
 
 from app.ui.generated.teacher_dashboard_ui import Ui_TeacherDashboard
 from app.views.dashboard_view import BaseDashboardView
@@ -20,6 +20,11 @@ from app.utils.database import execute_query, get_connection, database
 
 
 class TeacherDashboardView(BaseDashboardView):
+    """Teacher dashboard view class."""
+    
+    # Define signal as class variable
+    profile_updated = pyqtSignal()
+    
     """
     Teacher dashboard view class.
     
@@ -33,13 +38,8 @@ class TeacherDashboardView(BaseDashboardView):
     """
     
     def __init__(self, user, parent=None):
-        """
-        Initialize the teacher dashboard view.
-        
-        Args:
-            user (User): The authenticated teacher user
-            parent (QWidget, optional): The parent widget. Defaults to None.
-        """
+        """Initialize the teacher dashboard view."""
+        # Initialize base class first  
         super().__init__(user, parent)
         self.ui = Ui_TeacherDashboard()
         self.ui.setupUi(self)
@@ -52,6 +52,11 @@ class TeacherDashboardView(BaseDashboardView):
         self.ui.actionLogout.triggered.connect(self.handle_logout)
         self.ui.actionExit.triggered.connect(self.close)
         self.ui.actionRefresh.triggered.connect(self.refresh_data)
+        
+        # Connect profile signals
+        self.ui.profileButton.clicked.connect(self.open_profile_dialog)
+        self.ui.actionProfile.triggered.connect(self.open_profile_dialog)
+        self.profile_updated.connect(self.on_profile_updated)
         
         # Connect tab-specific signals and slots
         
@@ -142,37 +147,37 @@ class TeacherDashboardView(BaseDashboardView):
         for course in courses:
             # Apply search filter
             if search_text and not (
-                search_text in course[1].lower() or  # name
-                search_text in course[4].lower()     # description
+                search_text in course["name"].lower() or  # name
+                search_text in course["description"].lower()     # description
             ):
                 continue
                 
             self.ui.coursesTable.insertRow(row)
             
             # Add course data
-            self.ui.coursesTable.setItem(row, 0, QTableWidgetItem(str(course[0])))
-            self.ui.coursesTable.setItem(row, 1, QTableWidgetItem(course[1]))
-            self.ui.coursesTable.setItem(row, 2, QTableWidgetItem(course[2]))
-            self.ui.coursesTable.setItem(row, 3, QTableWidgetItem(course[3]))
-            self.ui.coursesTable.setItem(row, 4, QTableWidgetItem(course[4]))
-            self.ui.coursesTable.setItem(row, 5, QTableWidgetItem(f"${course[5]:.2f}"))
-            self.ui.coursesTable.setItem(row, 6, QTableWidgetItem("Yes" if course[6] else "No"))
+            self.ui.coursesTable.setItem(row, 0, QTableWidgetItem(str(course["id"])))
+            self.ui.coursesTable.setItem(row, 1, QTableWidgetItem(course["name"]))
+            self.ui.coursesTable.setItem(row, 2, QTableWidgetItem(course["language"]))
+            self.ui.coursesTable.setItem(row, 3, QTableWidgetItem(course["level"]))
+            self.ui.coursesTable.setItem(row, 4, QTableWidgetItem(course["description"]))
+            self.ui.coursesTable.setItem(row, 5, QTableWidgetItem(f"${course['price']:.2f}"))
+            self.ui.coursesTable.setItem(row, 6, QTableWidgetItem("Yes" if course["active"] else "No"))
             
             # Get student count
             query = """
                 SELECT COUNT(*) FROM student_courses
                 WHERE course_id = %s AND active = 1
             """
-            params = (course[0],)
+            params = (course["id"],)
             result = db.fetch_one(query, params)
-            student_count = result[0] if result else 0
+            student_count = result["COUNT(*)"] if result else 0
             
             self.ui.coursesTable.setItem(row, 7, QTableWidgetItem(str(student_count)))
             
             # Add action buttons
             view_button = QPushButton("View Details")
-            view_button.setProperty("course_id", course[0])
-            view_button.clicked.connect(lambda checked, cid=course[0]: self.view_course_details(cid))
+            view_button.setProperty("course_id", course["id"])
+            view_button.clicked.connect(lambda checked, cid=course["id"]: self.view_course_details(cid))
             
             # Create a widget to hold the buttons
             actions_widget = QWidget()
@@ -209,7 +214,7 @@ class TeacherDashboardView(BaseDashboardView):
             
         # Create a dialog
         dialog = QDialog(self)
-        dialog.setWindowTitle(f"Course Details: {course[0]}")
+        dialog.setWindowTitle(f"Course Details: {course['name']}")
         dialog.setMinimumWidth(500)
         
         # Create layout
@@ -222,7 +227,7 @@ class TeacherDashboardView(BaseDashboardView):
         name_layout = QHBoxLayout()
         name_label = QLabel("Name:")
         name_label.setMinimumWidth(100)
-        name_value = QLabel(course[0])
+        name_value = QLabel(course['name'])
         name_layout.addWidget(name_label)
         name_layout.addWidget(name_value)
         details_layout.addLayout(name_layout)
@@ -231,7 +236,7 @@ class TeacherDashboardView(BaseDashboardView):
         language_layout = QHBoxLayout()
         language_label = QLabel("Language:")
         language_label.setMinimumWidth(100)
-        language_value = QLabel(course[1])
+        language_value = QLabel(course['language'])
         language_layout.addWidget(language_label)
         language_layout.addWidget(language_value)
         details_layout.addLayout(language_layout)
@@ -240,7 +245,7 @@ class TeacherDashboardView(BaseDashboardView):
         level_layout = QHBoxLayout()
         level_label = QLabel("Level:")
         level_label.setMinimumWidth(100)
-        level_value = QLabel(course[2])
+        level_value = QLabel(course['level'])
         level_layout.addWidget(level_label)
         level_layout.addWidget(level_value)
         details_layout.addLayout(level_layout)
@@ -249,7 +254,7 @@ class TeacherDashboardView(BaseDashboardView):
         description_layout = QHBoxLayout()
         description_label = QLabel("Description:")
         description_label.setMinimumWidth(100)
-        description_value = QLabel(course[3])
+        description_value = QLabel(course['description'])
         description_value.setWordWrap(True)
         description_layout.addWidget(description_label)
         description_layout.addWidget(description_value)
@@ -259,7 +264,7 @@ class TeacherDashboardView(BaseDashboardView):
         price_layout = QHBoxLayout()
         price_label = QLabel("Price:")
         price_label.setMinimumWidth(100)
-        price_value = QLabel(f"${course[4]:.2f}")
+        price_value = QLabel(f"${course['price']:.2f}")
         price_layout.addWidget(price_label)
         price_layout.addWidget(price_value)
         details_layout.addLayout(price_layout)
@@ -268,7 +273,7 @@ class TeacherDashboardView(BaseDashboardView):
         active_layout = QHBoxLayout()
         active_label = QLabel("Active:")
         active_label.setMinimumWidth(100)
-        active_value = QLabel("Yes" if course[5] else "No")
+        active_value = QLabel("Yes" if course['active'] else "No")
         active_layout.addWidget(active_label)
         active_layout.addWidget(active_value)
         details_layout.addLayout(active_layout)
@@ -301,14 +306,14 @@ class TeacherDashboardView(BaseDashboardView):
             students_table.insertRow(row)
             
             # Add student data
-            students_table.setItem(row, 0, QTableWidgetItem(f"{student[1]} {student[2]}"))
+            students_table.setItem(row, 0, QTableWidgetItem(f"{student["first_name"]} {student["last_name"]}"))
             students_table.setItem(row, 1, QTableWidgetItem(student[3]))
             students_table.setItem(row, 2, QTableWidgetItem(student[4]))
             
             # Add action button
             message_button = QPushButton("Message")
-            message_button.setProperty("student_id", student[0])
-            message_button.clicked.connect(lambda checked, sid=student[0], sname=f"{student[1]} {student[2]}": self.message_student(sid, sname))
+            message_button.setProperty("student_id", student["id"])
+            message_button.clicked.connect(lambda checked, sid=student["id"], sname=f"{student["first_name"]} {student["last_name"]}": self.message_student(sid, sname))
             
             # Create a widget to hold the button
             actions_widget = QWidget()
@@ -357,7 +362,7 @@ class TeacherDashboardView(BaseDashboardView):
             combo.clear()
             combo.addItem("All Courses", -1)
             for course in courses:
-                combo.addItem(course[1], course[0])
+                combo.addItem(course["name"], course["id"])
                 
     def load_lessons(self):
         """Load lessons for the selected course."""
@@ -392,7 +397,7 @@ class TeacherDashboardView(BaseDashboardView):
                 
                 # Add lesson data
                 self.ui.lessonsTable.setItem(row, 0, QTableWidgetItem(str(i)))
-                self.ui.lessonsTable.setItem(row, 1, QTableWidgetItem(course[1]))
+                self.ui.lessonsTable.setItem(row, 1, QTableWidgetItem(course["name"]))
                 self.ui.lessonsTable.setItem(row, 2, QTableWidgetItem(f"Lesson {i}"))
                 self.ui.lessonsTable.setItem(row, 3, QTableWidgetItem(f"Description for Lesson {i}"))
                 
@@ -404,13 +409,13 @@ class TeacherDashboardView(BaseDashboardView):
                 # Add edit and delete buttons
                 edit_button = QPushButton("Edit")
                 edit_button.setProperty("lesson_id", i)
-                edit_button.setProperty("course_id", course[0])
-                edit_button.clicked.connect(lambda checked, lid=i, cid=course[0]: self.edit_lesson(lid, cid))
+                edit_button.setProperty("course_id", course["id"])
+                edit_button.clicked.connect(lambda checked, lid=i, cid=course["id"]: self.edit_lesson(lid, cid))
                 
                 delete_button = QPushButton("Delete")
                 delete_button.setProperty("lesson_id", i)
-                delete_button.setProperty("course_id", course[0])
-                delete_button.clicked.connect(lambda checked, lid=i, cid=course[0]: self.delete_lesson(lid, cid))
+                delete_button.setProperty("course_id", course["id"])
+                delete_button.clicked.connect(lambda checked, lid=i, cid=course["id"]: self.delete_lesson(lid, cid))
                 
                 # Create a widget to hold the buttons
                 actions_widget = QWidget()
@@ -460,7 +465,7 @@ class TeacherDashboardView(BaseDashboardView):
         courses = db.fetch_all(query, params)
         
         for course in courses:
-            course_combo.addItem(course[1], course[0])
+            course_combo.addItem(course["name"], course["id"])
             
         course_layout.addWidget(course_label)
         course_layout.addWidget(course_combo)
@@ -552,7 +557,7 @@ class TeacherDashboardView(BaseDashboardView):
         course = db.fetch_one(query, params)
         
         if course:
-            course_input.setText(course[0])
+            course_input.setText(course["name"])
             
         course_input.setReadOnly(True)
         course_layout.addWidget(course_label)
@@ -650,7 +655,7 @@ class TeacherDashboardView(BaseDashboardView):
         # Get students enrolled in the teacher's courses
         db = database()
         query = """
-            SELECT u.id, u.first_name, u.last_name, u.email, c.id, c.name
+            SELECT u.id, u.first_name, u.last_name, u.email, c.id AS course_id, c.name AS course_name
             FROM users u
             JOIN student_courses sc ON u.id = sc.student_id
             JOIN courses c ON sc.course_id = c.id
@@ -671,19 +676,19 @@ class TeacherDashboardView(BaseDashboardView):
         for student in students:
             # Apply search filter
             if search_text and not (
-                search_text in student[1].lower() or  # first_name
-                search_text in student[2].lower() or  # last_name
-                search_text in student[3].lower()     # email
+                search_text in student["first_name"].lower() or  # first_name
+                search_text in student["last_name"].lower() or  # last_name
+                search_text in student["email"].lower()     # email
             ):
                 continue
                 
             self.ui.studentsTable.insertRow(row)
             
             # Add student data
-            self.ui.studentsTable.setItem(row, 0, QTableWidgetItem(str(student[0])))
-            self.ui.studentsTable.setItem(row, 1, QTableWidgetItem(f"{student[1]} {student[2]}"))
-            self.ui.studentsTable.setItem(row, 2, QTableWidgetItem(student[3]))
-            self.ui.studentsTable.setItem(row, 3, QTableWidgetItem(student[5]))
+            self.ui.studentsTable.setItem(row, 0, QTableWidgetItem(str(student["id"])))
+            self.ui.studentsTable.setItem(row, 1, QTableWidgetItem(f"{student['first_name']} {student['last_name']}"))
+            self.ui.studentsTable.setItem(row, 2, QTableWidgetItem(student["email"]))
+            self.ui.studentsTable.setItem(row, 3, QTableWidgetItem(student["course_name"]))
             
             # Get progress (placeholder implementation)
             # In a real app, this would query the database for completed lessons/exercises
@@ -702,13 +707,13 @@ class TeacherDashboardView(BaseDashboardView):
             
             # Add action buttons
             view_button = QPushButton("View Details")
-            view_button.setProperty("student_id", student[0])
-            view_button.setProperty("course_id", student[4])
-            view_button.clicked.connect(lambda checked, sid=student[0], cid=student[4]: self.view_student_details(sid, cid))
+            view_button.setProperty("student_id", student["id"])
+            view_button.setProperty("course_id", student["course_id"])
+            view_button.clicked.connect(lambda checked, sid=student["id"], cid=student["course_id"]: self.view_student_details(sid, cid))
             
             message_button = QPushButton("Message")
-            message_button.setProperty("student_id", student[0])
-            message_button.clicked.connect(lambda checked, sid=student[0], sname=f"{student[1]} {student[2]}": self.message_student(sid, sname))
+            message_button.setProperty("student_id", student["id"])
+            message_button.clicked.connect(lambda checked, sid=student["id"], sname=f"{student['first_name']} {student['last_name']}": self.message_student(sid, sname))
             
             # Create a widget to hold the buttons
             actions_widget = QWidget()
@@ -759,7 +764,7 @@ class TeacherDashboardView(BaseDashboardView):
             
         # Create a dialog
         dialog = QDialog(self)
-        dialog.setWindowTitle(f"Student Details: {student[0]} {student[1]}")
+        dialog.setWindowTitle(f"Student Details: {student['first_name']} {student['last_name']}")
         dialog.setMinimumWidth(600)
         
         # Create layout
@@ -772,7 +777,7 @@ class TeacherDashboardView(BaseDashboardView):
         name_layout = QHBoxLayout()
         name_label = QLabel("Name:")
         name_label.setMinimumWidth(100)
-        name_value = QLabel(f"{student[0]} {student[1]}")
+        name_value = QLabel(f"{student['first_name']} {student['last_name']}")
         name_layout.addWidget(name_label)
         name_layout.addWidget(name_value)
         details_layout.addLayout(name_layout)
@@ -781,7 +786,7 @@ class TeacherDashboardView(BaseDashboardView):
         email_layout = QHBoxLayout()
         email_label = QLabel("Email:")
         email_label.setMinimumWidth(100)
-        email_value = QLabel(student[2])
+        email_value = QLabel(student['email'])
         email_layout.addWidget(email_label)
         email_layout.addWidget(email_value)
         details_layout.addLayout(email_layout)
@@ -790,7 +795,7 @@ class TeacherDashboardView(BaseDashboardView):
         course_layout = QHBoxLayout()
         course_label = QLabel("Course:")
         course_label.setMinimumWidth(100)
-        course_value = QLabel(course[0])
+        course_value = QLabel(course['name'])
         course_layout.addWidget(course_label)
         course_layout.addWidget(course_value)
         details_layout.addLayout(course_layout)
@@ -1022,8 +1027,8 @@ class TeacherDashboardView(BaseDashboardView):
             self.ui.attendanceTable.insertRow(row)
             
             # Add student data
-            self.ui.attendanceTable.setItem(row, 0, QTableWidgetItem(str(student[0])))
-            self.ui.attendanceTable.setItem(row, 1, QTableWidgetItem(f"{student[1]} {student[2]}"))
+            self.ui.attendanceTable.setItem(row, 0, QTableWidgetItem(str(student["id"])))
+            self.ui.attendanceTable.setItem(row, 1, QTableWidgetItem(f"{student['first_name']} {student['last_name']}"))
             
             # Get attendance status (placeholder implementation)
             # In a real app, this would query the database for attendance records
@@ -1129,9 +1134,9 @@ class TeacherDashboardView(BaseDashboardView):
                     self.ui.gradesTable.insertRow(row)
                     
                     # Add grade data
-                    self.ui.gradesTable.setItem(row, 0, QTableWidgetItem(str(student[0])))
-                    self.ui.gradesTable.setItem(row, 1, QTableWidgetItem(f"{student[1]} {student[2]}"))
-                    self.ui.gradesTable.setItem(row, 2, QTableWidgetItem(student[4]))
+                    self.ui.gradesTable.setItem(row, 0, QTableWidgetItem(str(student["id"])))
+                    self.ui.gradesTable.setItem(row, 1, QTableWidgetItem(f"{student['first_name']} {student['last_name']}"))
+                    self.ui.gradesTable.setItem(row, 2, QTableWidgetItem(student["name"]))
                     self.ui.gradesTable.setItem(row, 3, QTableWidgetItem("Exercise"))
                     self.ui.gradesTable.setItem(row, 4, QTableWidgetItem(f"Exercise {i}"))
                     
@@ -1162,9 +1167,9 @@ class TeacherDashboardView(BaseDashboardView):
                     self.ui.gradesTable.insertRow(row)
                     
                     # Add grade data
-                    self.ui.gradesTable.setItem(row, 0, QTableWidgetItem(str(student[0])))
-                    self.ui.gradesTable.setItem(row, 1, QTableWidgetItem(f"{student[1]} {student[2]}"))
-                    self.ui.gradesTable.setItem(row, 2, QTableWidgetItem(student[4]))
+                    self.ui.gradesTable.setItem(row, 0, QTableWidgetItem(str(student["id"])))
+                    self.ui.gradesTable.setItem(row, 1, QTableWidgetItem(f"{student['first_name']} {student['last_name']}"))
+                    self.ui.gradesTable.setItem(row, 2, QTableWidgetItem(student["name"]))
                     self.ui.gradesTable.setItem(row, 3, QTableWidgetItem("Test"))
                     
                     if i == 1:
@@ -1251,8 +1256,8 @@ class TeacherDashboardView(BaseDashboardView):
         
         # Add students to the list
         for student in students:
-            item = QListWidgetItem(f"{student[1]} {student[2]} (Student)")
-            item.setData(Qt.UserRole, student[0])
+            item = QListWidgetItem(f"{student["first_name"]} {student["last_name"]} (Student)")
+            item.setData(Qt.UserRole, student["id"])
             self.ui.chatsList.addItem(item)
             
         # Add admin to the list
@@ -1358,7 +1363,7 @@ class TeacherDashboardView(BaseDashboardView):
         
         # Add students to the combo box
         for student in students:
-            user_combo.addItem(f"{student[1]} {student[2]} (Student)", student[0])
+            user_combo.addItem(f"{student["first_name"]} {student["last_name"]} (Student)", student["id"])
             
         # Add admin to the combo box
         user_combo.addItem("Admin", 1)
@@ -1397,3 +1402,121 @@ class TeacherDashboardView(BaseDashboardView):
             
         # Show status message
         self.ui.statusbar.showMessage(f"New chat started with {user_name}.")
+        
+    def on_profile_updated(self):
+        """Handle profile update events."""
+        self.ui.welcomeLabel.setText(f"Welcome, {self.user.first_name} {self.user.last_name}")
+        self.ui.statusbar.showMessage("Profile updated successfully")
+
+    def open_profile_dialog(self):
+        """Open dialog to edit user profile."""
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Edit Profile")
+        dialog.setMinimumWidth(400)
+        
+        layout = QVBoxLayout(dialog)
+        
+        # Add form fields
+        form_layout = QVBoxLayout()
+        
+        # First name
+        first_name_layout = QHBoxLayout()
+        first_name_label = QLabel("First Name:")
+        first_name_input = QLineEdit()
+        first_name_input.setText(self.user.first_name)
+        first_name_layout.addWidget(first_name_label)
+        first_name_layout.addWidget(first_name_input)
+        form_layout.addLayout(first_name_layout)
+        
+        # Last name
+        last_name_layout = QHBoxLayout()
+        last_name_label = QLabel("Last Name:")
+        last_name_input = QLineEdit()
+        last_name_input.setText(self.user.last_name)
+        last_name_layout.addWidget(last_name_label)
+        last_name_layout.addWidget(last_name_input)
+        form_layout.addLayout(last_name_layout)
+        
+        # Email
+        email_layout = QHBoxLayout()
+        email_label = QLabel("Email:")
+        email_input = QLineEdit()
+        email_input.setText(self.user.email)
+        email_layout.addWidget(email_label)
+        email_layout.addWidget(email_input)
+        form_layout.addLayout(email_layout)
+        
+        # Password
+        password_layout = QHBoxLayout()
+        password_label = QLabel("New Password:")
+        password_input = QLineEdit()
+        password_input.setEchoMode(QLineEdit.Password)
+        password_input.setPlaceholderText("Leave empty to keep current password")
+        password_layout.addWidget(password_label)
+        password_layout.addWidget(password_input)
+        form_layout.addLayout(password_layout)
+        
+        layout.addLayout(form_layout)
+        
+        # Add buttons
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.accepted.connect(dialog.accept)
+        buttons.rejected.connect(dialog.reject)
+        layout.addWidget(buttons)
+        
+        if dialog.exec_() == QDialog.Accepted:
+            # Get form values and validate
+            first_name = first_name_input.text().strip()
+            last_name = last_name_input.text().strip()
+            email = email_input.text().strip()
+            new_password = password_input.text().strip()
+            
+            if not first_name or not last_name or not email:
+                QMessageBox.warning(self, "Validation Error", "First name, last name and email are required.")
+                return
+            
+            try:
+                db = database()
+                cursor = db.cursor()
+                
+                # Separate queries for with/without password update
+                if new_password:
+                    query = """
+                        UPDATE users 
+                        SET first_name = %s,
+                            last_name = %s,
+                            email = %s,
+                            password = %s,
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE id = %s
+                    """
+                    params = (first_name, last_name, email, new_password, self.user.user_id)
+                else:
+                    query = """
+                        UPDATE users 
+                        SET first_name = %s,
+                            last_name = %s,
+                            email = %s,
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE id = %s
+                    """
+                    params = (first_name, last_name, email, self.user.user_id)
+                
+                cursor.execute(query, params)
+                db.commit()
+                
+                # Update local user object
+                self.user.first_name = first_name
+                self.user.last_name = last_name
+                self.user.email = email
+                if new_password:
+                    self.user.password = new_password
+                
+                self.profile_updated.emit()
+                QMessageBox.information(self, "Success", "Profile updated successfully")
+                
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"Failed to update profile: {str(e)}")
+            finally:
+                cursor.close()
+                db.close()

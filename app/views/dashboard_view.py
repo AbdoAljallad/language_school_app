@@ -55,6 +55,8 @@ class BaseDashboardView(QMainWindow):
         )
         
         if reply == QMessageBox.Yes:
+            self.close()
+            # Emit logout signal that MainWindow will handle
             self.logout.emit()
             
     def closeEvent(self, event):

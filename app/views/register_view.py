@@ -57,50 +57,12 @@ class RegisterView(QMainWindow):
             self.ui.errorLabel.setText("Please enter your full name")
             self.ui.fullNameInput.setFocus()
             return
-        
-        if not username:
-            self.ui.errorLabel.setText("Please enter a username")
-            self.ui.usernameInput.setFocus()
-            return
-        
-        if not email:
-            self.ui.errorLabel.setText("Please enter your email address")
-            self.ui.emailInput.setFocus()
-            return
-        
-        # Validate email format
-        email_pattern = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
-        if not email_pattern.match(email):
-            self.ui.errorLabel.setText("Please enter a valid email address")
-            self.ui.emailInput.setFocus()
-            return
-        
-        if not password:
-            self.ui.errorLabel.setText("Please enter a password")
-            self.ui.passwordInput.setFocus()
-            return
-        
-        if password != confirm_password:
-            self.ui.errorLabel.setText("Passwords do not match")
-            self.ui.confirmPasswordInput.setFocus()
-            return
-        
-        # Check if username or email already exists
-        if User.get_by_username(username):
-            self.ui.errorLabel.setText("Username already exists")
-            self.ui.usernameInput.setFocus()
-            return
-        
-        if User.get_by_email(email):
-            self.ui.errorLabel.setText("Email already exists")
-            self.ui.emailInput.setFocus()
-            return
-        
-        # Create the user
+
+        # Create the user with combined full name
         user = User.create(
             username=username,
             password=password,
-            email=email,
+            email=email,  
             full_name=full_name,
             user_type=user_type
         )

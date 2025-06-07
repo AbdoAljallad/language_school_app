@@ -10,14 +10,14 @@ from PyQt5.QtWidgets import (
     QHBoxLayout, QLabel, QLineEdit, QComboBox, QSpinBox, QDateEdit, 
     QTextEdit, QPushButton, QDialogButtonBox, QListWidgetItem, QProgressBar, QWidget, QTableWidget
 )
-from PyQt5.QtCore import Qt, pyqtSlot, QDate
+from PyQt5.QtCore import Qt, pyqtSlot, QDate, pyqtSignal
 
 from app.ui.generated.student_dashboard_ui import Ui_StudentDashboard
 from app.views.base_dashboard_view import BaseDashboardView
 from app.models.user_model import User
 from app.models.course_model import Course
 from app.utils.database import execute_query, get_connection
-from datetime import datetime
+from datetime import datetime, timedelta  # Fixed import to include timedelta
 
 
 class StudentDashboardView(BaseDashboardView):
@@ -33,25 +33,31 @@ class StudentDashboardView(BaseDashboardView):
     - Managing payments
     """
     
-    def __init__(self, user):
-        """
-        Initialize the student dashboard view.
-        
-        Args:
-            user (User): The authenticated student user
-        """
-        super().__init__(user)
+    # Define signal as class variable 
+    profile_updated = pyqtSignal()
+    # Signal for when user logs out
+    logout_requested = pyqtSignal()
+
+    def __init__(self, user, parent=None):
+        """Initialize the student dashboard view."""
+        # Initialize base class first
+        super().__init__(user, parent)
         self.ui = Ui_StudentDashboard()
         self.ui.setupUi(self)
         
         # Set welcome message
         self.ui.welcomeLabel.setText(f"Welcome, {self.user.first_name} {self.user.last_name}")
         
-        # Connect signals and slots
+        # Connect signals and slots - fixed logout signal connection
         self.ui.logoutButton.clicked.connect(self.handle_logout)
         self.ui.actionLogout.triggered.connect(self.handle_logout)
         self.ui.actionExit.triggered.connect(self.close)
         self.ui.actionRefresh.triggered.connect(self.refresh_data)
+        
+        # Connect profile signals
+        self.ui.profileButton.clicked.connect(self.open_profile_dialog)
+        self.ui.actionEditProfile.triggered.connect(self.open_profile_dialog)
+        self.profile_updated.connect(self.on_profile_updated)
         
         # Connect dashboard buttons
         self.ui.viewCoursesButton.clicked.connect(lambda: self.ui.tabWidget.setCurrentIndex(1))
@@ -103,44 +109,64 @@ class StudentDashboardView(BaseDashboardView):
         
     def load_dashboard_stats(self):
         """Load dashboard statistics."""
-        # Get enrolled courses count
-        query = """
-            SELECT COUNT(*) FROM student_courses 
-            WHERE student_id = %s AND active = 1
-        """
-        params = (self.user.user_id,)
-        results = execute_query(query, params=params, fetch=True)
-        # Database may return results as dictionaries or tuples, handle both cases
-        if results and len(results) > 0:
-            row = results[0]  # First row
-            if isinstance(row, dict):
-                # If results are dictionaries with column names
-                enrolled_count = row.get('COUNT(*)') or row.get('count(*)')
-                # If no specific column name, get the first value
-                if enrolled_count is None and len(row) > 0:
-                    enrolled_count = list(row.values())[0]
-            else:
-                # If results are tuples
-                enrolled_count = row[0] if len(row) > 0 else 0
-        else:
-            enrolled_count = 0
-        self.ui.enrolledCoursesCountLabel.setText(str(enrolled_count))
-        
-        # Get upcoming lessons count (placeholder implementation)
-        # In a real app, this would query the database for upcoming lessons
-        upcoming_count = 5
-        self.ui.upcomingLessonsCountLabel.setText(str(upcoming_count))
-        
-        # Get pending exercises count (placeholder implementation)
-        # In a real app, this would query the database for pending exercises
-        pending_count = 2
-        self.ui.pendingExercisesCountLabel.setText(str(pending_count))
-        
-        # Get unread messages count (placeholder implementation)
-        # In a real app, this would query the database for unread messages
-        unread_count = 3
-        self.ui.unreadMessagesCountLabel.setText(str(unread_count))
-        
+        try:
+            # Get enrolled courses count
+            query = "SELECT COUNT(*) as count FROM student_courses WHERE student_id = %s AND active = 1"
+            params = (self.user.user_id,)
+            result = execute_query(query, params=params, fetch=True)
+            enrolled_count = result[0]['count'] if isinstance(result[0], dict) else result[0][0]
+            self.ui.enrolledCoursesCountLabel.setText(str(enrolled_count))
+
+            # Get total scheduled lessons count for all enrolled courses
+            query = """
+                SELECT COUNT(*) as count
+                FROM schedules s
+                JOIN student_courses sc ON s.course_id = sc.course_id
+                WHERE sc.student_id = %s 
+                AND sc.active = 1
+            """
+            result = execute_query(query, params=params, fetch=True)
+            upcoming_count = result[0]['count'] if isinstance(result[0], dict) else result[0][0]
+            self.ui.upcomingLessonsCountLabel.setText(str(upcoming_count))
+
+            # Get pending exercises count
+            query = """
+                SELECT COUNT(*) as count 
+                FROM exercises e
+                JOIN lessons l ON e.lesson_id = l.id
+                JOIN student_courses sc ON l.course_id = sc.course_id
+                LEFT JOIN student_exercise_submissions ses 
+                    ON e.id = ses.exercise_id AND ses.student_id = sc.student_id
+                WHERE sc.student_id = %s AND sc.active = 1
+                AND (ses.status IS NULL OR ses.status = 'not_submitted')
+                AND e.due_date >= CURRENT_DATE
+            """
+            result = execute_query(query, params=params, fetch=True)
+            pending_count = result[0]['count'] if isinstance(result[0], dict) else result[0][0]
+            self.ui.pendingExercisesCountLabel.setText(str(pending_count))
+
+            # Get unread messages count
+            query = """
+                SELECT COUNT(*) as count
+                FROM chat_messages cm
+                JOIN chats c ON cm.chat_id = c.id
+                WHERE (c.user1_id = %s OR c.user2_id = %s)
+                AND cm.sender_id != %s 
+                AND cm.read_status = 0
+            """
+            params = (self.user.user_id, self.user.user_id, self.user.user_id)
+            result = execute_query(query, params=params, fetch=True)
+            unread_count = result[0]['count'] if isinstance(result[0], dict) else result[0][0]
+            self.ui.unreadMessagesCountLabel.setText(str(unread_count))
+
+        except Exception as e:
+            print(f"Error loading dashboard stats: {str(e)}")
+            # Set default values on error
+            self.ui.enrolledCoursesCountLabel.setText("0")
+            self.ui.upcomingLessonsCountLabel.setText("0")
+            self.ui.pendingExercisesCountLabel.setText("0") 
+            self.ui.unreadMessagesCountLabel.setText("0")
+    
     def load_course_progress(self):
         """Load course progress bars."""
         # Get enrolled courses
@@ -168,18 +194,28 @@ class StudentDashboardView(BaseDashboardView):
         
         # Add progress bars for each course
         for i, course in enumerate(courses[:3]):  # Show up to 3 courses
+            # Handle both dictionary and tuple results
+            if isinstance(course, dict):
+                course_name = course['name']
+                course_lang = course['language']
+                course_level = course['level']
+            else:
+                # Assuming tuple order: id, name, language, level
+                course_name = course[1]
+                course_lang = course[2] 
+                course_level = course[3]
+            
             # Create layout for this course
             layout = QHBoxLayout()
             
-            # Add course label
-            label = QLabel(f"{course[1]} ({course[2]} {course[3]}):")
+            # Add course label with consistent access
+            label = QLabel(f"{course_name} ({course_lang} {course_level}):")
             layout.addWidget(label)
             
             # Add progress bar
             progress_bar = QProgressBar()
             
             # Calculate progress (placeholder implementation)
-            # In a real app, this would query the database for completed lessons/exercises
             if i == 0:
                 progress = 75
             elif i == 1:
@@ -234,28 +270,44 @@ class StudentDashboardView(BaseDashboardView):
         # Populate the table
         row = 0
         for course in courses:
+            # Handle both dictionary and tuple results
+            if isinstance(course, dict):
+                course_id = course['id']
+                course_name = course['name']
+                course_lang = course['language']
+                course_level = course['level']
+                teacher_fname = course['first_name']
+                teacher_lname = course['last_name']
+            else:
+                # Assuming tuple order: id, name, language, level, first_name, last_name
+                course_id = course[0]
+                course_name = course[1]
+                course_lang = course[2]
+                course_level = course[3]
+                teacher_fname = course[4]
+                teacher_lname = course[5]
+            
             # Apply filters
-            if search_text and search_text not in course[1].lower():
+            if search_text and search_text not in course_name.lower():
                 continue
                 
-            if language_filter and course[2] != language_filter:
+            if language_filter and course_lang != language_filter:
                 continue
                 
             self.ui.coursesTable.insertRow(row)
             
-            # Add course data
-            self.ui.coursesTable.setItem(row, 0, QTableWidgetItem(str(course[0])))
-            self.ui.coursesTable.setItem(row, 1, QTableWidgetItem(course[1]))
-            self.ui.coursesTable.setItem(row, 2, QTableWidgetItem(course[2]))
-            self.ui.coursesTable.setItem(row, 3, QTableWidgetItem(course[3]))
-            self.ui.coursesTable.setItem(row, 4, QTableWidgetItem(f"{course[4]} {course[5]}"))
+            # Add course data with consistent access
+            self.ui.coursesTable.setItem(row, 0, QTableWidgetItem(str(course_id)))
+            self.ui.coursesTable.setItem(row, 1, QTableWidgetItem(course_name))
+            self.ui.coursesTable.setItem(row, 2, QTableWidgetItem(course_lang))
+            self.ui.coursesTable.setItem(row, 3, QTableWidgetItem(course_level))
+            self.ui.coursesTable.setItem(row, 4, QTableWidgetItem(f"{teacher_fname} {teacher_lname}"))
             
             # Calculate progress (placeholder implementation)
-            # In a real app, this would query the database for completed lessons/exercises
             progress = "50%"
             self.ui.coursesTable.setItem(row, 5, QTableWidgetItem(progress))
             
-            # Add action buttons (view details, view lessons)
+            # Add action buttons
             actions_item = QTableWidgetItem("View Details | View Lessons")
             self.ui.coursesTable.setItem(row, 6, actions_item)
             
@@ -343,7 +395,7 @@ class StudentDashboardView(BaseDashboardView):
             query = """
                 SELECT c.id, c.name, c.language, c.level, u.first_name, u.last_name
                 FROM courses c
-                JOIN users u ON c.teacher_id = u.id
+                JOIN users u ON c.teacher_id = u.id 
                 WHERE c.active = 1
             """
             courses = execute_query(query, fetch=True)
@@ -352,24 +404,23 @@ class StudentDashboardView(BaseDashboardView):
             row = 0
             for course in courses:
                 # Apply filters
-                if search_text and search_text not in course[1].lower():
+                if search_text and search_text not in course['name'].lower():
                     continue
                     
-                if language_filter and language_filter != "All Languages" and course[2] != language_filter:
+                if language_filter and language_filter != "All Languages" and course['language'] != language_filter:
                     continue
                     
-                if level_filter and level_filter != "All Levels" and course[3] != level_filter:
+                if level_filter and level_filter != "All Levels" and course['level'] != level_filter:
                     continue
                     
                 # Check if already enrolled
                 query = """
-                    SELECT COUNT(*) FROM student_courses 
+                    SELECT COUNT(*) as count FROM student_courses 
                     WHERE student_id = %s AND course_id = %s AND active = 1
                 """
-                params = (self.user.user_id, course[0])
+                params = (self.user.user_id, course['id'])
                 result = execute_query(query, params=params, fetch=True)
-                result = result[0] if result else None
-                already_enrolled = result[0] > 0 if result else False
+                already_enrolled = result[0]['count'] > 0 if result else False
                 
                 if already_enrolled:
                     continue  # Skip courses the student is already enrolled in
@@ -377,11 +428,11 @@ class StudentDashboardView(BaseDashboardView):
                 table.insertRow(row)
                 
                 # Add course data
-                table.setItem(row, 0, QTableWidgetItem(str(course[0])))
-                table.setItem(row, 1, QTableWidgetItem(course[1]))
-                table.setItem(row, 2, QTableWidgetItem(course[2]))
-                table.setItem(row, 3, QTableWidgetItem(course[3]))
-                table.setItem(row, 4, QTableWidgetItem(f"{course[4]} {course[5]}"))
+                table.setItem(row, 0, QTableWidgetItem(str(course['id'])))
+                table.setItem(row, 1, QTableWidgetItem(course['name']))
+                table.setItem(row, 2, QTableWidgetItem(course['language']))
+                table.setItem(row, 3, QTableWidgetItem(course['level']))
+                table.setItem(row, 4, QTableWidgetItem(f"{course['first_name']} {course['last_name']}"))
                 
                 # Get schedule (placeholder implementation)
                 schedule = "Mon, Wed, Fri 10:00-11:30"
@@ -389,8 +440,8 @@ class StudentDashboardView(BaseDashboardView):
                 
                 # Add enroll button
                 enroll_button = QPushButton("Enroll")
-                enroll_button.setProperty("course_id", course[0])
-                enroll_button.clicked.connect(lambda checked, cid=course[0], cname=course[1]: enroll_in_course(cid, cname))
+                enroll_button.setProperty("course_id", course['id'])
+                enroll_button.clicked.connect(lambda checked, cid=course['id'], cname=course['name']: enroll_in_course(cid, cname))
                 table.setCellWidget(row, 6, enroll_button)
                 
                 row += 1
@@ -400,35 +451,83 @@ class StudentDashboardView(BaseDashboardView):
             
         # Function to enroll in a course
         def enroll_in_course(course_id, course_name):
-            # Confirm enrollment
-            reply = QMessageBox.question(
-                dialog,
-                "Confirm Enrollment",
-                f"Are you sure you want to enroll in {course_name}?",
-                QMessageBox.Yes | QMessageBox.No,
-                QMessageBox.No
-            )
-            
-            if reply == QMessageBox.Yes:
-                # Enroll the student in the course
-                query = """
-                    INSERT INTO student_courses (student_id, course_id, enrollment_date, active)
-                    VALUES (%s, %s, %s, 1)
-                """
-                params = (self.user.user_id, course_id, datetime.now().date().isoformat())
-                execute_query(query, params=params)
+            """Enroll in a course."""
+            try:
+                db = get_connection()
+                cursor = db.cursor(dictionary=True)
                 
-                # Show success message
-                QMessageBox.information(
-                    dialog,
-                    "Enrollment Successful",
-                    f"You have successfully enrolled in {course_name}."
-                )
+                cursor.execute("START TRANSACTION")
                 
-                # Reload catalog courses and dashboard
-                load_catalog_courses()
-                self.refresh_data()
+                # Check enrollment limit
+                cursor.execute("""
+                    SELECT COUNT(*) as count 
+                    FROM student_courses 
+                    WHERE student_id = %s AND active = 1
+                """, (self.user.user_id,))
                 
+                result = cursor.fetchone()
+                if result and result['count'] >= 5:
+                    db.rollback()
+                    QMessageBox.warning(self, "Error",
+                        "You cannot enroll in more than 5 courses")
+                    return False
+
+                # Check if already enrolled
+                cursor.execute("""
+                    SELECT id FROM student_courses
+                    WHERE student_id = %s AND course_id = %s AND active = 1
+                """, (self.user.user_id, course_id))
+                
+                if cursor.fetchone():
+                    db.rollback() 
+                    QMessageBox.warning(self, "Error",
+                        "You are already enrolled in this course")
+                    return False
+                    
+                # Check course capacity
+                cursor.execute("""
+                    SELECT c.max_students, COUNT(sc.id) as enrolled
+                    FROM courses c
+                    LEFT JOIN student_courses sc ON c.id = sc.course_id 
+                    WHERE c.id = %s
+                    GROUP BY c.id
+                """, (course_id,))
+                
+                result = cursor.fetchone()
+                if not result:
+                    db.rollback()
+                    QMessageBox.warning(self, "Error", "Course not found")
+                    return False
+                    
+                if result['enrolled'] >= result['max_students']:
+                    db.rollback()
+                    QMessageBox.warning(self, "Error", "Course is full")
+                    return False
+                    
+                # Enroll student
+                cursor.execute("""
+                    INSERT INTO student_courses 
+                    (student_id, course_id, enrollment_date, active)
+                    VALUES (%s, %s, CURRENT_DATE, 1)
+                """, (self.user.user_id, course_id))
+                
+                db.commit()
+                QMessageBox.information(self, "Success", 
+                    f"Successfully enrolled in {course_name}")
+                return True
+                
+            except Exception as e:
+                if 'db' in locals():
+                    db.rollback()
+                QMessageBox.critical(self, "Error", str(e))
+                return False
+                
+            finally:
+                if 'cursor' in locals():
+                    cursor.close()
+                if 'db' in locals():
+                    db.close()
+
         # Connect filter signals
         search_input.textChanged.connect(load_catalog_courses)
         language_combo.currentIndexChanged.connect(load_catalog_courses)
@@ -462,7 +561,15 @@ class StudentDashboardView(BaseDashboardView):
             combo.clear()
             combo.addItem("All Courses", -1)
             for course in courses:
-                combo.addItem(course[1], course[0])
+                # Handle both dictionary and tuple results
+                if isinstance(course, dict):
+                    course_id = course['id']
+                    course_name = course['name']
+                else:
+                    # Assuming tuple order: id, name
+                    course_id = course[0]
+                    course_name = course[1]
+                combo.addItem(course_name, course_id)
                 
     def load_schedule(self):
         """Load schedule for the selected course and date."""
@@ -490,17 +597,22 @@ class StudentDashboardView(BaseDashboardView):
             
         courses = execute_query(query, params=params, fetch=True)
         
-        # Placeholder implementation - in a real app, this would query the database for schedules
-        # For now, we'll just show some sample data
+        # Populate table with schedule data
         row = 0
         for course in courses:
+            # Handle both dictionary and tuple results
+            if isinstance(course, dict):
+                course_name = course['name']
+            else:
+                course_name = course[1]
+                
             # Add a row for each schedule
             self.ui.scheduleTable.insertRow(row)
             
             # Add schedule data
             self.ui.scheduleTable.setItem(row, 0, QTableWidgetItem(selected_date))
             self.ui.scheduleTable.setItem(row, 1, QTableWidgetItem("10:00-11:30"))
-            self.ui.scheduleTable.setItem(row, 2, QTableWidgetItem(course[1]))
+            self.ui.scheduleTable.setItem(row, 2, QTableWidgetItem(course_name))
             self.ui.scheduleTable.setItem(row, 3, QTableWidgetItem("Introduction to Grammar"))
             self.ui.scheduleTable.setItem(row, 4, QTableWidgetItem("John Smith"))
             self.ui.scheduleTable.setItem(row, 5, QTableWidgetItem("Room 101"))
@@ -513,7 +625,7 @@ class StudentDashboardView(BaseDashboardView):
             # Add schedule data
             self.ui.scheduleTable.setItem(row, 0, QTableWidgetItem(selected_date))
             self.ui.scheduleTable.setItem(row, 1, QTableWidgetItem("14:00-15:30"))
-            self.ui.scheduleTable.setItem(row, 2, QTableWidgetItem(course[1]))
+            self.ui.scheduleTable.setItem(row, 2, QTableWidgetItem(course_name))
             self.ui.scheduleTable.setItem(row, 3, QTableWidgetItem("Conversation Practice"))
             self.ui.scheduleTable.setItem(row, 4, QTableWidgetItem("Jane Doe"))
             self.ui.scheduleTable.setItem(row, 5, QTableWidgetItem("Room 203"))
@@ -528,13 +640,57 @@ class StudentDashboardView(BaseDashboardView):
         self.load_schedule()
         
     def export_schedule(self):
-        """Export schedule to a file."""
-        # Placeholder implementation - in a real app, this would export the schedule to a file
-        QMessageBox.information(
-            self,
-            "Export Schedule",
-            "Schedule exported successfully."
-        )
+        """Export schedule to a CSV file."""
+        try:
+            # Get current schedule data from table
+            rows = []
+            for row in range(self.ui.scheduleTable.rowCount()):
+                row_data = []
+                for col in range(self.ui.scheduleTable.columnCount()):
+                    item = self.ui.scheduleTable.item(row, col)
+                    row_data.append(item.text() if item else "")
+                rows.append(row_data)
+
+            if not rows:
+                QMessageBox.warning(self, "Export Schedule", "No schedule data to export.")
+                return
+
+            # Create CSV content
+            header = ["Date", "Time", "Course", "Topic", "Teacher", "Room"] 
+            csv_content = ",".join(header) + "\n"
+            for row in rows:
+                csv_content += ",".join(f'"{cell}"' for cell in row) + "\n"
+
+            # Get save location from user
+            from PyQt5.QtWidgets import QFileDialog
+            filename, _ = QFileDialog.getSaveFileName(
+                self,
+                "Export Schedule",
+                "",
+                "CSV Files (*.csv);;All Files (*)"
+            )
+
+            if filename:
+                # Add .csv extension if not present
+                if not filename.lower().endswith('.csv'):
+                    filename += '.csv'
+
+                # Save file
+                with open(filename, 'w', encoding='utf-8') as f:
+                    f.write(csv_content)
+
+                QMessageBox.information(
+                    self,
+                    "Export Schedule",
+                    f"Schedule exported successfully to {filename}"
+                )
+
+        except Exception as e:
+            QMessageBox.critical(
+                self, 
+                "Export Error",
+                f"Failed to export schedule: {str(e)}"
+            )
         
     def load_lessons(self):
         """Load lessons and exercises for the selected course and status."""
@@ -564,9 +720,14 @@ class StudentDashboardView(BaseDashboardView):
         courses = execute_query(query, params=params, fetch=True)
         
         # Placeholder implementation - in a real app, this would query the database for lessons and exercises
-        # For now, we'll just show some sample data
         row = 0
         for course in courses:
+            # Handle both dictionary and tuple results
+            if isinstance(course, dict):
+                course_name = course['name']
+            else:
+                course_name = course[1]
+                
             # Add rows for lessons
             for i in range(1, 6):
                 # Determine status based on lesson number
@@ -583,14 +744,14 @@ class StudentDashboardView(BaseDashboardView):
                     
                 self.ui.lessonsTable.insertRow(row)
                 
-                # Add lesson data
+                # Add lesson data with consistent access
                 self.ui.lessonsTable.setItem(row, 0, QTableWidgetItem(f"L{i}"))
-                self.ui.lessonsTable.setItem(row, 1, QTableWidgetItem(course[1]))
+                self.ui.lessonsTable.setItem(row, 1, QTableWidgetItem(course_name))
                 self.ui.lessonsTable.setItem(row, 2, QTableWidgetItem(f"Lesson {i}"))
                 self.ui.lessonsTable.setItem(row, 3, QTableWidgetItem("Lesson"))
                 
                 # Due date is 1 week from now for each lesson
-                due_date = datetime.now().date() + datetime.timedelta(days=7*i)
+                due_date = datetime.now().date() + timedelta(days=7*i)  # Fixed timedelta usage
                 self.ui.lessonsTable.setItem(row, 4, QTableWidgetItem(due_date.isoformat()))
                 
                 self.ui.lessonsTable.setItem(row, 5, QTableWidgetItem(status))
@@ -625,12 +786,12 @@ class StudentDashboardView(BaseDashboardView):
                 
                 # Add exercise data
                 self.ui.lessonsTable.setItem(row, 0, QTableWidgetItem(f"E{i}"))
-                self.ui.lessonsTable.setItem(row, 1, QTableWidgetItem(course[1]))
+                self.ui.lessonsTable.setItem(row, 1, QTableWidgetItem(course_name))
                 self.ui.lessonsTable.setItem(row, 2, QTableWidgetItem(f"Exercise {i}"))
                 self.ui.lessonsTable.setItem(row, 3, QTableWidgetItem("Exercise"))
                 
                 # Due date is 3 days from now for each exercise
-                due_date = datetime.now().date() + datetime.timedelta(days=3*i)
+                due_date = datetime.now().date() + timedelta(days=3*i)
                 self.ui.lessonsTable.setItem(row, 4, QTableWidgetItem(due_date.isoformat()))
                 
                 self.ui.lessonsTable.setItem(row, 5, QTableWidgetItem(status))
@@ -689,19 +850,25 @@ class StudentDashboardView(BaseDashboardView):
         # For now, we'll just show some sample data
         row = 0
         for course in courses:
+            # Handle both dictionary and tuple results
+            if isinstance(course, dict):
+                course_name = course['name']
+            else:
+                course_name = course[1]
+                
             # Add exercise grades
             if grade_type is None or grade_type == "Exercise":
                 for i in range(1, 4):
                     self.ui.gradesTable.insertRow(row)
                     
-                    # Add grade data
+                    # Add grade data with consistent access
                     self.ui.gradesTable.setItem(row, 0, QTableWidgetItem(f"E{i}"))
-                    self.ui.gradesTable.setItem(row, 1, QTableWidgetItem(course[1]))
+                    self.ui.gradesTable.setItem(row, 1, QTableWidgetItem(course_name))
                     self.ui.gradesTable.setItem(row, 2, QTableWidgetItem("Exercise"))
                     self.ui.gradesTable.setItem(row, 3, QTableWidgetItem(f"Exercise {i}"))
                     
                     # Date is 1 week ago for each exercise
-                    date = datetime.now().date() - datetime.timedelta(days=7*i)
+                    date = datetime.now().date() - timedelta(days=7*i)  # Fixed timedelta usage
                     self.ui.gradesTable.setItem(row, 4, QTableWidgetItem(date.isoformat()))
                     
                     # Grade is random between 70 and 100
@@ -719,9 +886,9 @@ class StudentDashboardView(BaseDashboardView):
                 for i in range(1, 3):
                     self.ui.gradesTable.insertRow(row)
                     
-                    # Add grade data
+                    # Add grade data with consistent access
                     self.ui.gradesTable.setItem(row, 0, QTableWidgetItem(f"T{i}"))
-                    self.ui.gradesTable.setItem(row, 1, QTableWidgetItem(course[1]))
+                    self.ui.gradesTable.setItem(row, 1, QTableWidgetItem(course_name))
                     self.ui.gradesTable.setItem(row, 2, QTableWidgetItem("Test"))
                     
                     if i == 1:
@@ -732,7 +899,7 @@ class StudentDashboardView(BaseDashboardView):
                     self.ui.gradesTable.setItem(row, 3, QTableWidgetItem(test_name))
                     
                     # Date is 2 weeks ago for each test
-                    date = datetime.now().date() - datetime.timedelta(days=14*i)
+                    date = datetime.now().date() - timedelta(days=14*i)  # Fixed timedelta usage
                     self.ui.gradesTable.setItem(row, 4, QTableWidgetItem(date.isoformat()))
                     
                     # Grade is random between 80 and 100
@@ -753,13 +920,57 @@ class StudentDashboardView(BaseDashboardView):
         self.load_grades()
         
     def export_grades(self):
-        """Export grades to a file."""
-        # Placeholder implementation - in a real app, this would export the grades to a file
-        QMessageBox.information(
-            self,
-            "Export Grades",
-            "Grades exported successfully."
-        )
+        """Export grades to a CSV file."""
+        try:
+            # Get current grades data from table
+            rows = []
+            for row in range(self.ui.gradesTable.rowCount()):
+                row_data = []
+                for col in range(self.ui.gradesTable.columnCount()):
+                    item = self.ui.gradesTable.item(row, col)
+                    row_data.append(item.text() if item else "")
+                rows.append(row_data)
+
+            if not rows:
+                QMessageBox.warning(self, "Export Grades", "No grade data to export.")
+                return
+
+            # Create CSV content
+            header = ["ID", "Course", "Type", "Name", "Date", "Grade", "Feedback"]
+            csv_content = ",".join(header) + "\n"
+            for row in rows:
+                csv_content += ",".join(f'"{cell}"' for cell in row) + "\n"
+
+            # Get save location from user 
+            from PyQt5.QtWidgets import QFileDialog
+            filename, _ = QFileDialog.getSaveFileName(
+                self,
+                "Export Grades",
+                "",
+                "CSV Files (*.csv);;All Files (*)"
+            )
+
+            if filename:
+                # Add .csv extension if not present
+                if not filename.lower().endswith('.csv'):
+                    filename += '.csv'
+
+                # Save file
+                with open(filename, 'w', encoding='utf-8') as f:
+                    f.write(csv_content)
+
+                QMessageBox.information(
+                    self,
+                    "Export Grades",
+                    f"Grades exported successfully to {filename}"
+                )
+
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Export Error", 
+                f"Failed to export grades: {str(e)}"
+            )
         
     def load_payments(self):
         """Load payments for the student."""
@@ -949,10 +1160,7 @@ class StudentDashboardView(BaseDashboardView):
         # Clear the list
         self.ui.chatsList.clear()
         
-        # Placeholder implementation - in a real app, this would query the database for chats
-        # For now, we'll just show some sample data
-        
-        # Add chats with teachers
+        # Get teachers
         query = """
             SELECT u.id, u.first_name, u.last_name
             FROM users u
@@ -965,11 +1173,23 @@ class StudentDashboardView(BaseDashboardView):
         teachers = execute_query(query, params=params, fetch=True)
         
         for teacher in teachers:
-            item = QListWidgetItem(f"{teacher[1]} {teacher[2]} (Teacher)")
-            item.setData(Qt.UserRole, teacher[0])
+            # Handle both dictionary and tuple results
+            if isinstance(teacher, dict):
+                teacher_id = teacher['id']
+                teacher_fname = teacher['first_name']
+                teacher_lname = teacher['last_name']
+            else:
+                # Assuming tuple order: id, first_name, last_name
+                teacher_id = teacher[0]
+                teacher_fname = teacher[1]
+                teacher_lname = teacher[2]
+            
+            # Create chat item with consistent access
+            item = QListWidgetItem(f"{teacher_fname} {teacher_lname} (Teacher)")
+            item.setData(Qt.UserRole, teacher_id)
             self.ui.chatsList.addItem(item)
             
-        # Add a chat with admin
+        # Add admin chat
         admin_item = QListWidgetItem("Admin")
         admin_item.setData(Qt.UserRole, 1)  # Admin ID
         self.ui.chatsList.addItem(admin_item)
@@ -986,7 +1206,7 @@ class StudentDashboardView(BaseDashboardView):
         user_id = current_item.data(Qt.UserRole)
         
         # Placeholder implementation - in a real app, this would query the database for messages
-        # For now, we'll just show some sample data
+        # Remove duplicate code and undefined admin_item
         
         # Add sample messages
         messages = [
@@ -1096,3 +1316,136 @@ class StudentDashboardView(BaseDashboardView):
             
             # Show status message
             self.ui.statusLabel.setText(f"New chat with {user_name} created.")
+            
+    def on_profile_updated(self):
+        """Handle profile update events."""
+        self.ui.welcomeLabel.setText(f"Welcome, {self.user.first_name} {self.user.last_name}")
+        self.ui.statusLabel.setText("Profile updated successfully")
+
+    def open_profile_dialog(self):
+        """Open dialog to edit user profile."""
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Edit Profile")
+        dialog.setMinimumWidth(400)
+        
+        layout = QVBoxLayout(dialog)
+        
+        # Add form fields
+        form_layout = QVBoxLayout()
+        
+        # First name
+        first_name_layout = QHBoxLayout()
+        first_name_label = QLabel("First Name:")
+        first_name_input = QLineEdit()
+        first_name_input.setText(self.user.first_name)
+        first_name_layout.addWidget(first_name_label)
+        first_name_layout.addWidget(first_name_input)
+        form_layout.addLayout(first_name_layout)
+        
+        # Last name
+        last_name_layout = QHBoxLayout()
+        last_name_label = QLabel("Last Name:")
+        last_name_input = QLineEdit()
+        last_name_input.setText(self.user.last_name)
+        last_name_layout.addWidget(last_name_label)
+        last_name_layout.addWidget(last_name_input)
+        form_layout.addLayout(last_name_layout)
+        
+        # Email
+        email_layout = QHBoxLayout()
+        email_label = QLabel("Email:")
+        email_input = QLineEdit()
+        email_input.setText(self.user.email)
+        email_layout.addWidget(email_label)
+        email_layout.addWidget(email_input)
+        form_layout.addLayout(email_layout)
+        
+        # Password
+        password_layout = QHBoxLayout()
+        password_label = QLabel("New Password:")
+        password_input = QLineEdit()
+        password_input.setEchoMode(QLineEdit.Password)
+        password_input.setPlaceholderText("Leave empty to keep current password")
+        password_layout.addWidget(password_label)
+        password_layout.addWidget(password_input)
+        form_layout.addLayout(password_layout)
+        
+        layout.addLayout(form_layout)
+        
+        # Add buttons
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.accepted.connect(dialog.accept)
+        buttons.rejected.connect(dialog.reject)
+        layout.addWidget(buttons)
+        
+        if dialog.exec_() == QDialog.Accepted:
+            # Get form values and validate
+            first_name = first_name_input.text().strip()
+            last_name = last_name_input.text().strip()
+            email = email_input.text().strip()
+            new_password = password_input.text().strip()
+            
+            if not first_name or not last_name or not email:
+                QMessageBox.warning(self, "Validation Error", "First name, last name and email are required.")
+                return
+            
+            try:
+                db = get_connection()  # Use get_connection instead of undefined database()
+                cursor = db.cursor()
+                
+                # Separate queries for with/without password update
+                if new_password:
+                    query = """
+                        UPDATE users 
+                        SET first_name = %s,
+                            last_name = %s,
+                            email = %s,
+                            password = %s,
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE id = %s
+                    """
+                    params = (first_name, last_name, email, new_password, self.user.user_id)
+                else:
+                    query = """
+                        UPDATE users 
+                        SET first_name = %s,
+                            last_name = %s,
+                            email = %s,
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE id = %s
+                    """
+                    params = (first_name, last_name, email, self.user.user_id)
+                
+                cursor.execute(query, params)
+                db.commit()
+                
+                # Update local user object
+                self.user.first_name = first_name
+                self.user.last_name = last_name
+                self.user.email = email
+                if new_password:
+                    self.user.password = new_password
+                
+                self.profile_updated.emit()
+                QMessageBox.information(self, "Success", "Profile updated successfully")
+                
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"Failed to update profile: {str(e)}")
+            finally:
+                if 'cursor' in locals():
+                    cursor.close()
+                if 'db' in locals():
+                    db.close()
+                
+    def handle_logout(self):
+        """Handle user logout."""
+        reply = QMessageBox.question(self, 'Confirm Logout',
+                                   'Are you sure you want to logout?',
+                                   QMessageBox.Yes | QMessageBox.No,
+                                   QMessageBox.No)
+        
+        if reply == QMessageBox.Yes:
+            # Emit logout signal
+            self.logout_requested.emit()
+            # Close the dashboard window
+            self.close()
