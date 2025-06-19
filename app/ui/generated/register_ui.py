@@ -10,65 +10,66 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_RegisterWindow(object):
     def setupUi(self, RegisterWindow):
         RegisterWindow.setObjectName("RegisterWindow")
-        RegisterWindow.resize(400, 600)
-        RegisterWindow.setMinimumSize(QtCore.QSize(400, 600))
-        RegisterWindow.setStyleSheet("QMainWindow {\n"
-"    background-color: #f5f5f5;\n"
-"}\n"
-"QLabel#titleLabel {\n"
-"    font-size: 24px;\n"
-"    font-weight: bold;\n"
-"    color: #2c3e50;\n"
-"}\n"
-"QLabel#subtitleLabel {\n"
-"    font-size: 16px;\n"
-"    color: #7f8c8d;\n"
-"}\n"
-"QLabel {\n"
-"    font-size: 14px;\n"
-"    color: #2c3e50;\n"
-"}\n"
-"QLineEdit, QComboBox {\n"
-"    padding: 8px;\n"
-"    border: 1px solid #bdc3c7;\n"
-"    border-radius: 4px;\n"
-"    background-color: white;\n"
-"    min-height: 20px;\n"
-"}\n"
-"QLineEdit:focus, QComboBox:focus {\n"
-"    border: 1px solid #3498db;\n"
-"}\n"
-"QPushButton {\n"
-"    background-color: #3498db;\n"
-"    color: white;\n"
-"    border: none;\n"
-"    border-radius: 4px;\n"
-"    padding: 10px 20px;\n"
-"    font-size: 14px;\n"
-"}\n"
-"QPushButton:hover {\n"
-"    background-color: #2980b9;\n"
-"}\n"
-"QPushButton:pressed {\n"
-"    background-color: #1f6aa5;\n"
-"}\n"
-"QPushButton#loginButton {\n"
-"    background-color: transparent;\n"
-"    color: #3498db;\n"
-"    text-decoration: underline;\n"
-"    padding: 0;\n"
-"}\n"
-"QPushButton#loginButton:hover {\n"
-"    color: #2980b9;\n"
-"}\n"
-"QLabel#errorLabel {\n"
-"    color: #e74c3c;\n"
-"    font-weight: bold;\n"
-"}\n"
-"QLabel#versionLabel {\n"
-"    color: #7f8c8d;\n"
-"    font-size: 12px;\n"
-"}")
+        RegisterWindow.resize(450, 650)  # Slightly larger window
+        RegisterWindow.setMinimumSize(QtCore.QSize(450, 650))
+        RegisterWindow.setStyleSheet("""
+            QMainWindow {
+                background-color: #f5f5f5;
+            }
+            QLabel#titleLabel {
+                font-size: 28px;
+                font-weight: bold;
+                color: #2c3e50;
+            }
+            QLabel#subtitleLabel {
+                font-size: 16px;
+                color: #7f8c8d;
+            }
+            QLabel {
+                font-size: 14px;
+                color: #2c3e50;
+                padding: 5px 0;
+            }
+            QLineEdit, QComboBox {
+                padding: 10px;
+                border: 1px solid #bdc3c7;
+                border-radius: 5px;
+                background-color: white;
+                min-height: 25px;
+                font-size: 14px;
+            }
+            QLineEdit:focus, QComboBox:focus {
+                border: 2px solid #3498db;
+            }
+            QPushButton#registerButton {
+                background-color: #2ecc71;
+                color: white;
+                border: none;
+                border-radius: 5px;
+                padding: 12px;
+                font-size: 16px;
+                font-weight: bold;
+                min-height: 45px;
+            }
+            QPushButton#registerButton:hover {
+                background-color: #27ae60;
+            }
+            QPushButton#loginButton {
+                background-color: transparent;
+                color: #3498db;
+                text-decoration: underline;
+                border: none;
+                font-size: 14px;
+            }
+            QPushButton#loginButton:hover {
+                color: #2980b9;
+            }
+            QLabel#errorLabel {
+                color: #e74c3c;
+                font-weight: bold;
+                padding: 5px;
+            }
+        """)
         self.centralwidget = QtWidgets.QWidget(RegisterWindow)
         self.centralwidget.setObjectName("centralwidget")
         self.verticalLayout = QtWidgets.QVBoxLayout(self.centralwidget)
@@ -158,25 +159,25 @@ class Ui_RegisterWindow(object):
 
     def retranslateUi(self, RegisterWindow):
         _translate = QtCore.QCoreApplication.translate
-        RegisterWindow.setWindowTitle(_translate("RegisterWindow", "Language School - Register"))
+        RegisterWindow.setWindowTitle(_translate("RegisterWindow", "Language School - Create Account"))
         self.titleLabel.setText(_translate("RegisterWindow", "Language School"))
-        self.subtitleLabel.setText(_translate("RegisterWindow", "Create a new account"))
+        self.subtitleLabel.setText(_translate("RegisterWindow", "Join our learning community"))
         self.fullNameLabel.setText(_translate("RegisterWindow", "Full Name:"))
         self.fullNameInput.setPlaceholderText(_translate("RegisterWindow", "Enter your full name"))
         self.usernameLabel.setText(_translate("RegisterWindow", "Username:"))
-        self.usernameInput.setPlaceholderText(_translate("RegisterWindow", "Choose a username"))
+        self.usernameInput.setPlaceholderText(_translate("RegisterWindow", "Choose a username (min. 3 characters)"))
         self.emailLabel.setText(_translate("RegisterWindow", "Email:"))
         self.emailInput.setPlaceholderText(_translate("RegisterWindow", "Enter your email address"))
         self.passwordLabel.setText(_translate("RegisterWindow", "Password:"))
-        self.passwordInput.setPlaceholderText(_translate("RegisterWindow", "Choose a password"))
+        self.passwordInput.setPlaceholderText(_translate("RegisterWindow", "Choose a password (min. 6 characters)"))
         self.confirmPasswordLabel.setText(_translate("RegisterWindow", "Confirm Password:"))
         self.confirmPasswordInput.setPlaceholderText(_translate("RegisterWindow", "Confirm your password"))
-        self.userTypeLabel.setText(_translate("RegisterWindow", "I am a:"))
-        self.userTypeComboBox.setItemText(0, _translate("RegisterWindow", "Student"))
-        self.userTypeComboBox.setItemText(1, _translate("RegisterWindow", "Teacher"))
-        self.registerButton.setText(_translate("RegisterWindow", "Register"))
+        self.userTypeLabel.setText(_translate("RegisterWindow", "I want to:"))
+        self.userTypeComboBox.setItemText(0, _translate("RegisterWindow", "Learn a language (Student)"))
+        self.userTypeComboBox.setItemText(1, _translate("RegisterWindow", "Teach a language (Teacher)"))
+        self.registerButton.setText(_translate("RegisterWindow", "Create Account"))
         self.loginPromptLabel.setText(_translate("RegisterWindow", "Already have an account?"))
-        self.loginButton.setText(_translate("RegisterWindow", "Login"))
+        self.loginButton.setText(_translate("RegisterWindow", "Sign In"))
         self.versionLabel.setText(_translate("RegisterWindow", "Version 1.0.0"))
 
 
