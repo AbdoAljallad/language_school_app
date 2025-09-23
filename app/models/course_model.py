@@ -5,6 +5,8 @@ Represents a course in the system and provides methods for course-related operat
 """
 
 from app.utils.database import execute_query, execute_transaction
+import datetime
+from typing import Any
 
 class Course:
     """
@@ -453,42 +455,173 @@ class Course:
     def add_schedule(self, day_of_week, start_time, end_time, room=None):
         """
         Add a schedule to the course.
-        
+
         Args:
             day_of_week (str): Day of the week.
-            start_time (str): Start time.
-            end_time (str): End time.
+            start_time (str|datetime.time|datetime.timedelta): Start time.
+            end_time (str|datetime.time|datetime.timedelta): End time.
             room (str, optional): Room. Defaults to None.
-        
+
         Returns:
             dict: Schedule dictionary if creation succeeds, None otherwise.
         """
         if not self.course_id:
             return None
-        
+
+        def _time_to_str(t: Any) -> str:
+            """Normalize time-like value to 'HH:MM:SS' string."""
+            if t is None:
+                return ""
+            if isinstance(t, datetime.timedelta):
+                secs = int(t.total_seconds())
+                h = secs // 3600
+                m = (secs % 3600) // 60
+                s = secs % 60
+                return f"{h:02d}:{m:02d}:{s:02d}"
+            if isinstance(t, datetime.time):
+                return t.strftime("%H:%M:%S")
+            if isinstance(t, datetime.datetime):
+                return t.time().strftime("%H:%M:%S")
+            return str(t)
+
+        def _to_seconds(ts: str) -> int:
+            parts = ts.split(":")
+            parts = [int(p) for p in parts]
+            if len(parts) == 2:
+                h, m = parts
+                s = 0
+            else:
+                h, m, s = parts
+            return h * 3600 + m * 60 + s
+
+        # normalize times
+        start_str = _time_to_str(start_time)
+        end_str = _time_to_str(end_time)
+        try:
+            start_secs = _to_seconds(start_str)
+            end_secs = _to_seconds(end_str)
+        except Exception:
+            raise ValueError("Invalid time format for start_time or end_time")
+
+        if start_secs >= end_secs:
+            raise ValueError("start_time must be earlier than end_time")
+
+        # Normalize day_of_week and room for comparisons
+        norm_day = str(day_of_week).strip().lower()
+        norm_room = None if room is None else str(room).strip()
+        room_key = norm_room if norm_room is not None else ""
+
+        # Try parse numeric room for DB int column usage
+        room_int = None
+        if room_key != "":
+            try:
+                room_int = int(room_key)
+            except Exception:
+                room_int = None
+
+        # --- validate room exists in rooms table (DB-level rooms list) ---
+        if room_key != "":
+            try:
+                if room_int is not None:
+                    room_check = execute_query("SELECT room_number FROM rooms WHERE room_number = %s", (room_int,), fetch=True)
+                else:
+                    room_check = execute_query("SELECT room_number FROM rooms WHERE CAST(room_number AS CHAR) = %s", (room_key,), fetch=True)
+
+                if not room_check or len(room_check) == 0:
+                    raise ValueError(f"Room '{room}' is not valid. Valid rooms are 101–150 and 201–250.")
+            except ValueError:
+                raise
+            except Exception:
+                # If DB/table missing, return explicit error so caller can surface it
+                raise ValueError("Room validation failed (rooms table missing or DB error).")
+        # --- end room validation ---
+
+        # Ensure we have teacher_id (try DB if missing on object)
+        teacher_id = self.teacher_id
+        if not teacher_id and self.course_id:
+            try:
+                r = execute_query("SELECT teacher_id FROM courses WHERE course_id = %s", (self.course_id,), fetch=True)
+                if r and len(r) > 0:
+                    teacher_id = r[0].get('teacher_id')
+            except Exception:
+                teacher_id = None
+
+        # Fetch all schedules for the same normalized day to perform robust checks in Python
+        candidates = execute_query(
+            "SELECT s.*, c.teacher_id as _teacher_id FROM schedules s LEFT JOIN courses c ON s.course_id = c.course_id WHERE LOWER(TRIM(s.day_of_week)) = %s",
+            (norm_day,), fetch=True
+        ) or []
+
+        def _norm_room_val(v):
+            if v is None:
+                return ""
+            return str(v).strip()
+
+        for cand in candidates:
+            try:
+                cand_course = cand.get('course_id')
+                cand_room = _norm_room_val(cand.get('room'))
+                cand_start = _time_to_str(cand.get('start_time'))
+                cand_end = _time_to_str(cand.get('end_time'))
+                cand_start_secs = _to_seconds(cand_start)
+                cand_end_secs = _to_seconds(cand_end)
+            except Exception:
+                # skip malformed row
+                continue
+
+            # Exact duplicate for same course (same start,end,room)
+            if cand_course == self.course_id and cand_start_secs == start_secs and cand_end_secs == end_secs and cand_room == room_key:
+                raise ValueError("An identical schedule already exists for this course.")
+
+            # Room conflict: same room (empty/null treated same) and overlapping times
+            if room_key != "" and cand_room == room_key:
+                # overlap if not (candidate ends <= new start or candidate starts >= new end)
+                if not (cand_end_secs <= start_secs or cand_start_secs >= end_secs):
+                    raise ValueError(f"Room '{room}' is already booked on {day_of_week} at that time.")
+
+            # Teacher conflict: candidate teacher matches and overlapping times
+            cand_teacher = cand.get('_teacher_id') or cand.get('teacher_id')
+            if teacher_id and cand_teacher and int(cand_teacher) == int(teacher_id):
+                if not (cand_end_secs <= start_secs or cand_start_secs >= end_secs):
+                    raise ValueError(f"Teacher (id={teacher_id}) has another class on {day_of_week} at that time.")
+
         # Insert the new schedule
         query = """
             INSERT INTO schedules 
             (course_id, day_of_week, start_time, end_time, room)
             VALUES (%s, %s, %s, %s, %s)
         """
+        # Insert room as integer where possible
+        insert_room = room_int if room_int is not None else (norm_room if norm_room != "" else None)
         params = (
-            self.course_id, day_of_week, start_time, end_time, room
+            self.course_id, day_of_week, start_str, end_str, insert_room
         )
-        result = execute_query(query, params, commit=True)
-        
+        try:
+            result = execute_query(query, params, commit=True)
+        except Exception as e:
+            # Translate DB errors (FK, trigger SIGNAL, etc.) to ValueError with user-friendly messages
+            msg = str(e)
+            if "foreign key" in msg.lower() or "referential" in msg.lower():
+                raise ValueError("Invalid room: room must be one of the defined rooms (101–150, 201–250).")
+            if "Room conflict" in msg or "room conflict" in msg.lower():
+                raise ValueError("Room conflict: another schedule uses this room at the same time.")
+            if "Teacher conflict" in msg or "teacher conflict" in msg.lower():
+                raise ValueError("Teacher conflict: teacher has another class at the same time.")
+            # Fallback: raise generic schedule insertion error
+            raise ValueError(f"Failed to add schedule: {msg}")
+
         if result is not None and result > 0:
             # Get the last inserted ID
             query = "SELECT LAST_INSERT_ID() as id"
             id_result = execute_query(query, fetch=True)
-            
+
             if id_result and len(id_result) > 0:
                 schedule_id = id_result[0].get('id')
-                
+
                 # Get the schedule
                 query = "SELECT * FROM schedules WHERE schedule_id = %s"
                 schedule_result = execute_query(query, (schedule_id,), fetch=True)
-                
+
                 if schedule_result and len(schedule_result) > 0:
                     return schedule_result[0]
         return None

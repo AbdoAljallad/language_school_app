@@ -16,6 +16,7 @@ DROP TABLE IF EXISTS student_courses;
 DROP TABLE IF EXISTS schedules;
 DROP TABLE IF EXISTS courses;
 DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS rooms;
 
 -- Create users table
 CREATE TABLE users (
@@ -30,6 +31,30 @@ CREATE TABLE users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
+
+-- Create rooms table and populate ranges 101-150 and 201-250
+CREATE TABLE IF NOT EXISTS rooms (
+  room_number INT PRIMARY KEY
+);
+
+-- Populate 101..150
+INSERT IGNORE INTO rooms (room_number)
+VALUES
+-- 101..150
+(101),(102),(103),(104),(105),(106),(107),(108),(109),(110),
+(111),(112),(113),(114),(115),(116),(117),(118),(119),(120),
+(121),(122),(123),(124),(125),(126),(127),(128),(129),(130),
+(131),(132),(133),(134),(135),(136),(137),(138),(139),(140),
+(141),(142),(143),(144),(145),(146),(147),(148),(149),(150);
+
+-- Populate 201..250
+INSERT IGNORE INTO rooms (room_number)
+VALUES
+(201),(202),(203),(204),(205),(206),(207),(208),(209),(210),
+(211),(212),(213),(214),(215),(216),(217),(218),(219),(220),
+(221),(222),(223),(224),(225),(226),(227),(228),(229),(230),
+(231),(232),(233),(234),(235),(236),(237),(238),(239),(240),
+(241),(242),(243),(244),(245),(246),(247),(248),(249),(250);
 
 -- Create courses table
 CREATE TABLE courses (
@@ -46,17 +71,19 @@ CREATE TABLE courses (
     FOREIGN KEY (teacher_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
--- Create schedules table
+-- Create schedules table (room now INT referencing rooms.room_number)
+DROP TABLE IF EXISTS schedules;
 CREATE TABLE schedules (
     id INT AUTO_INCREMENT PRIMARY KEY,
     course_id INT NOT NULL,
     day_of_week ENUM('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday') NOT NULL,
     start_time TIME NOT NULL,
     end_time TIME NOT NULL,
-    room VARCHAR(50),
+    room INT, -- changed to INT to reference rooms.room_number
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
+    FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE,
+    FOREIGN KEY (room) REFERENCES rooms(room_number) ON DELETE SET NULL
 );
 
 -- Create student-course relationship table
@@ -175,16 +202,23 @@ CREATE TABLE chats (
     UNIQUE KEY (user1_id, user2_id)
 );
 
--- Create chat messages table
+-- Create chat messages table (updated: support edit/delete metadata)
+DROP TABLE IF EXISTS chat_messages;
 CREATE TABLE chat_messages (
     id INT AUTO_INCREMENT PRIMARY KEY,
     chat_id INT NOT NULL,
     sender_id INT NOT NULL,
-    message TEXT NOT NULL,
+    message TEXT,
+    deleted BOOLEAN NOT NULL DEFAULT FALSE,
+    deleted_at TIMESTAMP NULL DEFAULT NULL,
+    edited BOOLEAN NOT NULL DEFAULT FALSE,
+    edited_at TIMESTAMP NULL DEFAULT NULL,
     read_status BOOLEAN NOT NULL DEFAULT FALSE,
     sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (chat_id) REFERENCES chats(id) ON DELETE CASCADE,
-    FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE
+    FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_sender_id (sender_id),
+    INDEX idx_chat_id (chat_id)
 );
 
 -- Create tests table
@@ -239,6 +273,46 @@ CREATE TABLE student_dashboard_stats (
     FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+-- Create triggers to prevent overlapping schedules for the same room or same teacher
+DELIMITER $$
+CREATE TRIGGER trg_prevent_room_overlap
+BEFORE INSERT ON schedules
+FOR EACH ROW
+BEGIN
+  DECLARE cnt INT DEFAULT 0;
+  IF NEW.room IS NOT NULL THEN
+    SELECT COUNT(*) INTO cnt
+    FROM schedules
+    WHERE LOWER(TRIM(day_of_week)) = LOWER(TRIM(NEW.day_of_week))
+      AND room = NEW.room
+      AND NOT (end_time <= NEW.start_time OR start_time >= NEW.end_time);
+    IF cnt > 0 THEN
+      SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Room conflict: another schedule uses this room at the same time.';
+    END IF;
+  END IF;
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE TRIGGER trg_prevent_teacher_overlap
+BEFORE INSERT ON schedules
+FOR EACH ROW
+BEGIN
+  DECLARE cnt INT DEFAULT 0;
+  SELECT COUNT(*) INTO cnt
+  FROM schedules s
+  JOIN courses c ON s.course_id = c.course_id
+  WHERE LOWER(TRIM(s.day_of_week)) = LOWER(TRIM(NEW.day_of_week))
+    AND c.teacher_id IS NOT NULL AND c.teacher_id = (
+        SELECT teacher_id FROM courses WHERE course_id = NEW.course_id
+    )
+    AND NOT (s.end_time <= NEW.start_time OR s.start_time >= NEW.end_time);
+  IF cnt > 0 THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Teacher conflict: teacher has another class at the same time.';
+  END IF;
+END$$
+DELIMITER ;
+
 -- Create triggers for dashboard stats
 DELIMITER //
 
@@ -292,19 +366,19 @@ DELIMITER //
 
 -- Insert admin user
 INSERT INTO users (username, password, first_name, last_name, email, user_type, active)
-VALUES ('admin', 'admin123', 'Admin', 'User', 'admin@example.com', 'admin', 1);
+VALUES ('admin', '1', 'Admin', 'User', 'admin@example.com', 'admin', 1);
 
 -- Insert teacher users
 INSERT INTO users (username, password, first_name, last_name, email, user_type, active)
 VALUES 
-('teacher1', 'password123', 'John', 'Smith', 'john.smith@example.com', 'teacher', 1),
+('teacher1', '1', 'John', 'Smith', 'john.smith@example.com', 'teacher', 1),
 ('teacher2', 'password123', 'Maria', 'Garcia', 'maria.garcia@example.com', 'teacher', 1),
 ('teacher3', 'password123', 'David', 'Johnson', 'david.johnson@example.com', 'teacher', 1);
 
 -- Insert student users
 INSERT INTO users (username, password, first_name, last_name, email, user_type, active)
 VALUES 
-('student1', 'password123', 'Alice', 'Johnson', 'alice.johnson@example.com', 'student', 1),
+('student1', '1', 'Alice', 'Johnson', 'alice.johnson@example.com', 'student', 1),
 ('student2', 'password123', 'Bob', 'Smith', 'bob.smith@example.com', 'student', 1),
 ('student3', 'password123', 'Charlie', 'Brown', 'charlie.brown@example.com', 'student', 1),
 ('student4', 'password123', 'Diana', 'Wilson', 'diana.wilson@example.com', 'student', 1),
@@ -319,20 +393,21 @@ VALUES
 ('German for Travelers', 'German', 'A2', 'Learn practical German for your travels.', 450.00, 2, 1),
 ('Business English', 'English', 'B2', 'English for professional settings and business communication.', 700.00, 3, 1);
 
--- Insert schedules
+-- Insert schedules (use numeric room values; ensure rooms are valid)
 INSERT INTO schedules (course_id, day_of_week, start_time, end_time, room)
 VALUES 
-(1, 'Monday', '10:00:00', '11:30:00', '101'),
-(1, 'Wednesday', '10:00:00', '11:30:00', '101'),
-(1, 'Friday', '10:00:00', '11:30:00', '101'),
-(2, 'Tuesday', '14:00:00', '15:30:00', '203'),
-(2, 'Thursday', '14:00:00', '15:30:00', '203'),
-(3, 'Monday', '16:00:00', '17:30:00', '305'),
-(3, 'Wednesday', '16:00:00', '17:30:00', '305'),
-(4, 'Tuesday', '10:00:00', '11:30:00', '102'),
-(4, 'Thursday', '10:00:00', '11:30:00', '102'),
-(5, 'Monday', '18:00:00', '19:30:00', '204'),
-(5, 'Wednesday', '18:00:00', '19:30:00', '204');
+(1, 'Monday', '10:00:00', '11:30:00', 101),
+(1, 'Wednesday', '10:00:00', '11:30:00', 101),
+(1, 'Friday', '10:00:00', '11:30:00', 101),
+(2, 'Tuesday', '14:00:00', '15:30:00', 203),
+(2, 'Thursday', '14:00:00', '15:30:00', 203),
+-- changed 305 -> 205 (305 was outside defined rooms)
+(3, 'Monday', '16:00:00', '17:30:00', 205),
+(3, 'Wednesday', '16:00:00', '17:30:00', 205),
+(4, 'Tuesday', '10:00:00', '11:30:00', 102),
+(4, 'Thursday', '10:00:00', '11:30:00', 102),
+(5, 'Monday', '18:00:00', '19:30:00', 204),
+(5, 'Wednesday', '18:00:00', '19:30:00', 204);
 
 -- Insert student enrollments
 INSERT INTO student_courses (student_id, course_id, enrollment_date, active)
@@ -474,3 +549,50 @@ VALUES
 (3, 'Schedule Change', 'Your Spanish class schedule has been updated.', 1, 'info'),
 (4, 'Admin Message', 'Please submit your course materials by Friday.', 0, 'info'),
 (1, 'System Update', 'The system will be updated tonight at 10 PM.', 0, 'warning');
+
+-- =========================
+-- Migration / Cleanup Steps
+-- (Run these on an existing database to enforce rooms & prevent invalid inserts)
+-- =========================
+
+-- 1) Set non-matching room values to NULL (handles varchar/old values)
+UPDATE schedules s
+LEFT JOIN rooms r ON CAST(s.room AS UNSIGNED) = r.room_number
+SET s.room = NULL
+WHERE r.room_number IS NULL;
+
+-- 2) Convert schedules.room to INT (safe if values now numeric or NULL)
+ALTER TABLE schedules
+  MODIFY COLUMN room INT NULL;
+
+-- 3) Add foreign key constraint to enforce valid rooms (will fail if already exists)
+-- If running on an existing DB and a FK already exists, drop it first or run this only once.
+ALTER TABLE schedules
+  ADD CONSTRAINT fk_schedules_room
+  FOREIGN KEY (room) REFERENCES rooms(room_number)
+  ON DELETE SET NULL;
+
+-- 4) (Optional) As an extra safeguard, add triggers to block room/time overlaps in DB
+DELIMITER $$
+CREATE TRIGGER IF NOT EXISTS trg_prevent_room_overlap
+BEFORE INSERT ON schedules
+FOR EACH ROW
+BEGIN
+  DECLARE cnt INT DEFAULT 0;
+  IF NEW.room IS NOT NULL THEN
+    SELECT COUNT(*) INTO cnt
+    FROM schedules
+    WHERE LOWER(TRIM(day_of_week)) = LOWER(TRIM(NEW.day_of_week))
+      AND room = NEW.room
+      AND NOT (end_time <= NEW.start_time OR start_time >= NEW.end_time);
+    IF cnt > 0 THEN
+      SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Room conflict: another schedule uses this room at the same time.';
+    END IF;
+  END IF;
+END$$
+DELIMITER ;
+
+-- Note: MySQL 8.0 does not support CREATE TRIGGER IF NOT EXISTS; if your server errors,
+-- create the trigger only once (or check information_schema.TRIGGERS before creating).
+
+-- End of migration block

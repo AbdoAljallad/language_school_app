@@ -6,6 +6,70 @@ Represents a user in the system and provides methods for user-related operations
 
 from app.utils.database import execute_query, execute_transaction, get_connection
 from app.utils.crypto import hash_password, verify_password
+import logging
+import json
+from pathlib import Path
+from datetime import datetime
+from typing import List, Dict, Any
+
+_DATA_DIR = Path(__file__).resolve().parents[1] / "data"
+_CHATS_FILE = _DATA_DIR / "chats.json"
+
+def _ensure_data_dir():
+    try:
+        _DATA_DIR.mkdir(parents=True, exist_ok=True)
+    except Exception:
+        pass
+
+def _load_chats_json() -> Dict[str, Any]:
+    _ensure_data_dir()
+    if not _CHATS_FILE.exists():
+        return {"next_chat_id": 1, "next_message_id": 1, "chats": []}
+    try:
+        with _CHATS_FILE.open("r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {"next_chat_id": 1, "next_message_id": 1, "chats": []}
+
+def _save_chats_json(data: Dict[str, Any]) -> bool:
+    _ensure_data_dir()
+    try:
+        with _CHATS_FILE.open("w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        return True
+    except Exception:
+        return False
+
+def _next_chat_id(data: Dict[str, Any]) -> int:
+    nid = data.get("next_chat_id", 1)
+    data["next_chat_id"] = nid + 1
+    return nid
+
+def _next_message_id(data: Dict[str, Any]) -> int:
+    nid = data.get("next_message_id", 1)
+    data["next_message_id"] = nid + 1
+    return nid
+
+logger = logging.getLogger(__name__)
+
+_CHAT_META_SUPPORTED = None
+
+def _db_supports_chat_meta() -> bool:
+    """
+    Detect whether the DB chat_messages table contains edited/deleted columns.
+    Cache the result in _CHAT_META_SUPPORTED.
+    """
+    global _CHAT_META_SUPPORTED
+    if _CHAT_META_SUPPORTED is not None:
+        return _CHAT_META_SUPPORTED
+    try:
+        # try a lightweight read that references one of the new columns
+        # If the column is missing this will raise and we catch it.
+        execute_query("SELECT edited FROM chat_messages LIMIT 1", fetch=True)
+        _CHAT_META_SUPPORTED = True
+    except Exception:
+        _CHAT_META_SUPPORTED = False
+    return _CHAT_META_SUPPORTED
 
 class User:
     """
@@ -31,6 +95,8 @@ class User:
             address (str, optional): Address. Defaults to None.
             is_active (bool, optional): Whether the user is active. Defaults to True.
         """
+        # Add id as alias for user_id for compatibility
+        self.id = user_id
         self.user_id = user_id
         self.username = username
         self.email = email
@@ -53,32 +119,23 @@ class User:
         Returns:
             User: A User object.
         """
-        # Handle database column name mapping
+        # Handle different ID field names
         user_id = data.get('user_id') or data.get('id')
         
-        # Create full_name from first_name and last_name if needed
-        full_name = data.get('full_name')
-        if not full_name and data.get('first_name') and data.get('last_name'):
-            full_name = f"{data.get('first_name')} {data.get('last_name')}"
-            
-        is_active = data.get('is_active')
-        if is_active is None and data.get('active') is not None:
-            is_active = data.get('active')
-            
         user = cls(
-            user_id=user_id,
+            user_id=user_id,  # This will set both id and user_id
             username=data.get('username'),
             email=data.get('email'),
-            full_name=full_name,
+            full_name=data.get('full_name'),
             user_type=data.get('user_type'),
             language_level=data.get('language_level'),
             profile_image=data.get('profile_image'),
             phone=data.get('phone'),
             address=data.get('address'),
-            is_active=is_active
+            is_active=data.get('is_active')
         )
         
-        # Add first_name and last_name as separate attributes
+        # Ensure both first_name and last_name are set
         user.first_name = data.get('first_name', '')
         user.last_name = data.get('last_name', '')
         
@@ -193,58 +250,25 @@ class User:
     
     @staticmethod
     def authenticate(username, password):
-        """
-        Authenticate a user with plaintext password.
-        
-        Args:
-            username (str): Username.
-            password (str): Password.
-        
-        Returns:
-            User: User object if authentication succeeds, None otherwise.
-        """
-        # Enhanced debugging
-        print(f"Attempting to authenticate user: {username} with plaintext password")
-        
-        # Step 1: First check if user exists regardless of password
-        check_query = "SELECT * FROM users WHERE username = %s"
-        user_exists = execute_query(check_query, (username,), fetch=True)
-        
-        if user_exists:
-            print(f"User '{username}' exists in database.")
-            print(f"Found user data: {user_exists[0]}")
-            stored_password = user_exists[0].get('password')
-            print(f"Stored password is: '{stored_password}'")
-            print(f"Comparing with provided password using plaintext comparison")
-        else:
-            print(f"User '{username}' not found in database!")
+        """Authenticate a user."""
+        try:
+            # Check user credentials
+            query = """
+                SELECT id, username, first_name, last_name, email, user_type, active 
+                FROM users 
+                WHERE username = %s AND password = %s AND active = 1
+            """
+            result = execute_query(query, (username, password), fetch=True)
+            
+            if result and len(result) > 0:
+                user_data = result[0]
+                # Convert user_type to lowercase for consistent comparison
+                user_data['user_type'] = user_data['user_type'].lower() if user_data['user_type'] else None
+                return User.from_dict(user_data)
+                
             return None
-        
-        # Step 2: Try authentication
-        query = "SELECT * FROM users WHERE username = %s AND password = %s"
-        print(f"Executing query: {query} with params: {(username, password)}")
-        result = execute_query(query, (username, password), fetch=True)
-        
-        # Step 3: Process results
-        if result and len(result) > 0:
-            user_data = result[0]
-            print(f"Authentication successful for user: {username}")
-            print(f"User data: {user_data}")
-            
-            # Update last login time - using id instead of user_id to match database schema
-            update_query = "UPDATE users SET updated_at = CURRENT_TIMESTAMP WHERE id = %s"
-            execute_query(update_query, (user_data.get('id'),), commit=True)
-            
-            return User.from_dict(user_data)
-        else:
-            print(f"Authentication failed for user: {username} - password mismatch")
-            
-            # Try direct string comparison for debugging
-            if stored_password == password:
-                print("NOTE: Direct string comparison matches, but SQL query failed!")
-            else:
-                print(f"Direct string comparison also fails: '{stored_password}' != '{password}'")
-            
+        except Exception as e:
+            logger.error(f"Authentication error: {str(e)}")
             return None
     
     def save(self):
@@ -328,7 +352,7 @@ class User:
             return user
             
         except Exception as e:
-            print(f"Error creating user: {str(e)}")
+            logger.exception("Error creating user: %s", str(e))
             if 'db' in locals():
                 db.rollback()
             return None
@@ -435,21 +459,269 @@ class User:
     def mark_notification_as_read(self, notification_id):
         """
         Mark a notification as read.
-        
-        Args:
-            notification_id (int): Notification ID.
-        
-        Returns:
-            bool: True if the operation succeeded, False otherwise.
         """
         if not self.user_id:
             return False
-        
         query = """
             UPDATE notifications 
             SET read_status = 1, read_at = CURRENT_TIMESTAMP
             WHERE notification_id = %s AND user_id = %s
         """
         result = execute_query(query, (notification_id, self.user_id), commit=True)
-        
         return result is not None and result > 0
+
+    # ----------------------
+    # Chat / Messaging helpers (DB-first, JSON fallback)
+    # Controller code can call User.get_chats(user_id) etc.
+    @staticmethod
+    def get_chats(user_id: int) -> List[Dict[str, Any]]:
+        """Return list of chats for user_id. Try DB first; on failure, use JSON store."""
+        if not user_id:
+            return []
+        # Try DB
+        try:
+            query = """
+                SELECT c.id as chat_id,
+                       CASE WHEN c.user1_id = %s THEN c.user2_id ELSE c.user1_id END as other_user_id,
+                       u.username as other_username, u.first_name, u.last_name,
+                       SUBSTRING_INDEX(GROUP_CONCAT(m.message ORDER BY m.sent_at DESC SEPARATOR '||__||'), '||__||', 1) as last_message,
+                       MAX(m.sent_at) as last_at,
+                       SUM(CASE WHEN m.read_status = 0 AND m.sender_id != %s THEN 1 ELSE 0 END) as unread_count
+                FROM chats c
+                LEFT JOIN users u ON u.id = CASE WHEN c.user1_id = %s THEN c.user2_id ELSE c.user1_id END
+                LEFT JOIN chat_messages m ON m.chat_id = c.id
+                WHERE c.user1_id = %s OR c.user2_id = %s
+                GROUP BY c.id
+                ORDER BY last_at DESC
+            """
+            rows = execute_query(query, (user_id, user_id, user_id, user_id, user_id), fetch=True) or []
+            return rows
+        except Exception:
+            # Fallback to JSON file
+            data = _load_chats_json()
+            chats_out = []
+            for c in data.get("chats", []):
+                if int(c.get("user1_id")) == int(user_id) or int(c.get("user2_id")) == int(user_id):
+                    other_id = c["user2_id"] if int(c["user1_id"]) == int(user_id) else c["user1_id"]
+                    last_msg = None
+                    last_at = None
+                    unread = 0
+                    msgs = c.get("messages", [])
+                    if msgs:
+                        last = msgs[-1]
+                        last_msg = last.get("message")
+                        last_at = last.get("sent_at")
+                        for m in msgs:
+                            if m.get("sender_id") != user_id and user_id not in m.get("read_by", []):
+                                unread += 1
+                    # try to fetch user fields
+                    try:
+                        u = User.get_by_id(other_id)
+                        other_username = u.username if u else None
+                        first_name = getattr(u, "first_name", "")
+                        last_name = getattr(u, "last_name", "")
+                    except Exception:
+                        other_username = None
+                        first_name = ""
+                        last_name = ""
+                    chats_out.append({
+                        "chat_id": c.get("id"),
+                        "other_user_id": other_id,
+                        "other_username": other_username,
+                        "first_name": first_name,
+                        "last_name": last_name,
+                        "last_message": last_msg,
+                        "last_at": last_at,
+                        "unread_count": unread
+                    })
+            # sort by last_at (most recent first)
+            chats_out.sort(key=lambda x: x.get("last_at") or "", reverse=True)
+            return chats_out
+
+    @staticmethod
+    def get_or_create_chat(user1_id: int, user2_id: int) -> int:
+        """Return existing chat id between two users or create it (DB or JSON fallback)."""
+        if not user1_id or not user2_id:
+            return None
+        # DB attempt
+        try:
+            q = "SELECT id FROM chats WHERE (user1_id = %s AND user2_id = %s) OR (user1_id = %s AND user2_id = %s) LIMIT 1"
+            r = execute_query(q, (user1_id, user2_id, user2_id, user1_id), fetch=True)
+            if r and len(r) > 0:
+                return r[0].get("id")
+            insert_q = "INSERT INTO chats (user1_id, user2_id) VALUES (%s, %s)"
+            execute_query(insert_q, (user1_id, user2_id), commit=True)
+            last = execute_query("SELECT LAST_INSERT_ID() as id", fetch=True)
+            return last[0].get("id") if last else None
+        except Exception:
+            # JSON fallback
+            data = _load_chats_json()
+            for c in data.get("chats", []):
+                a = int(c.get("user1_id"))
+                b = int(c.get("user2_id"))
+                if (a == int(user1_id) and b == int(user2_id)) or (a == int(user2_id) and b == int(user1_id)):
+                    return c.get("id")
+            # create new chat
+            cid = _next_chat_id(data)
+            chat_obj = {"id": cid, "user1_id": int(user1_id), "user2_id": int(user2_id), "messages": []}
+            data.setdefault("chats", []).append(chat_obj)
+            _save_chats_json(data)
+            return cid
+
+    @staticmethod
+    def get_messages(chat_id: int, limit: int = 200, after_id: int = None) -> List[Dict[str, Any]]:
+        """Return list of messages for chat_id ordered asc. DB-first, JSON fallback."""
+        if not chat_id:
+            return []
+        # Try DB first; select columns depending on DB support
+        try:
+            if _db_supports_chat_meta():
+                if after_id:
+                    q = ("SELECT id, chat_id, sender_id, message, edited, edited_at, deleted, deleted_at, "
+                         "read_status, sent_at FROM chat_messages WHERE chat_id = %s AND id > %s ORDER BY sent_at ASC LIMIT %s")
+                    params = (chat_id, after_id, limit)
+                else:
+                    q = ("SELECT id, chat_id, sender_id, message, edited, edited_at, deleted, deleted_at, "
+                         "read_status, sent_at FROM chat_messages WHERE chat_id = %s ORDER BY sent_at ASC LIMIT %s")
+                    params = (chat_id, limit)
+            else:
+                if after_id:
+                    q = "SELECT id, chat_id, sender_id, message, read_status, sent_at FROM chat_messages WHERE chat_id = %s AND id > %s ORDER BY sent_at ASC LIMIT %s"
+                    params = (chat_id, after_id, limit)
+                else:
+                    q = "SELECT id, chat_id, sender_id, message, read_status, sent_at FROM chat_messages WHERE chat_id = %s ORDER BY sent_at ASC LIMIT %s"
+                    params = (chat_id, limit)
+            rows = execute_query(q, params, fetch=True) or []
+            return rows
+        except Exception:
+            # Fallback to JSON file if DB unavailable or query fails
+            data = _load_chats_json()
+            chat = next((c for c in data.get("chats", []) if int(c.get("id")) == int(chat_id)), None)
+            if not chat:
+                return []
+            msgs = chat.get("messages", [])
+            if after_id:
+                msgs = [m for m in msgs if int(m.get("id", 0)) > int(after_id)]
+            return msgs[-limit:] if limit else msgs
+
+    @staticmethod
+    def send_message(chat_id: int, sender_id: int, text: str) -> bool:
+        """Insert a chat message (DB-first, JSON fallback)."""
+        if not chat_id or not sender_id or not text:
+            return False
+        # try DB insert
+        try:
+            q = "INSERT INTO chat_messages (chat_id, sender_id, message, read_status) VALUES (%s, %s, %s, 0)"
+            execute_query(q, (chat_id, sender_id, text), commit=True)
+            try:
+                execute_query("UPDATE chats SET updated_at = CURRENT_TIMESTAMP WHERE id = %s", (chat_id,), commit=True)
+            except Exception:
+                pass
+            return True
+        except Exception:
+            data = _load_chats_json()
+            chat = next((c for c in data.get("chats", []) if int(c.get("id")) == int(chat_id)), None)
+            if not chat:
+                return False
+            mid = _next_message_id(data)
+            sent_at = datetime.utcnow().isoformat()
+            msg = {
+                "id": mid,
+                "sender_id": int(sender_id),
+                "message": text,
+                "sent_at": sent_at,
+                "read_by": [int(sender_id)],
+                "edited": False,
+                "edited_at": None,
+                "deleted": False,
+                "deleted_at": None,
+                "read_status": False
+            }
+            chat.setdefault("messages", []).append(msg)
+            saved = _save_chats_json(data)
+            return saved
+
+    @staticmethod
+    def edit_message(message_id: int, user_id: int, new_text: str) -> bool:
+        """Allow the sender to edit their message. Returns True on success."""
+        if not message_id or not user_id or new_text is None:
+            return False
+        # Try DB
+        try:
+            r = execute_query("SELECT sender_id FROM chat_messages WHERE id = %s", (message_id,), fetch=True)
+            if not r:
+                return False
+            if int(r[0].get("sender_id")) != int(user_id):
+                return False
+            # Try rich update first, fallback to simple update if server lacks columns
+            try:
+                execute_query("UPDATE chat_messages SET message = %s, edited = 1, edited_at = CURRENT_TIMESTAMP WHERE id = %s",
+                              (new_text, message_id), commit=True)
+            except Exception as ex:
+                # If edited column missing, fallback to updating only message
+                if "Unknown column" in str(ex) or "edited" in str(ex).lower():
+                    execute_query("UPDATE chat_messages SET message = %s WHERE id = %s", (new_text, message_id), commit=True)
+                else:
+                    raise
+            return True
+        except Exception:
+            # JSON fallback
+            data = _load_chats_json()
+            changed = False
+            for c in data.get("chats", []):
+                for m in c.get("messages", []):
+                    if int(m.get("id")) == int(message_id):
+                        if int(m.get("sender_id")) != int(user_id):
+                            return False
+                        m["message"] = new_text
+                        m["edited"] = True
+                        m["edited_at"] = datetime.utcnow().isoformat()
+                        changed = True
+                        break
+                if changed:
+                    break
+            if changed:
+                return _save_chats_json(data)
+            return False
+
+    @staticmethod
+    def delete_message(message_id: int, user_id: int) -> bool:
+        """Allow the sender to mark their message as deleted. Returns True on success."""
+        if not message_id or not user_id:
+            return False
+        # Try DB
+        try:
+            r = execute_query("SELECT sender_id FROM chat_messages WHERE id = %s", (message_id,), fetch=True)
+            if not r:
+                return False
+            if int(r[0].get("sender_id")) != int(user_id):
+                return False
+            # Try rich delete first; if columns missing, fall back to blanking message only
+            try:
+                execute_query("UPDATE chat_messages SET deleted = 1, deleted_at = CURRENT_TIMESTAMP, message = '' WHERE id = %s",
+                              (message_id,), commit=True)
+            except Exception as ex:
+                if "Unknown column" in str(ex) or "deleted" in str(ex).lower():
+                    execute_query("UPDATE chat_messages SET message = '' WHERE id = %s", (message_id,), commit=True)
+                else:
+                    raise
+            return True
+        except Exception:
+            # JSON fallback
+            data = _load_chats_json()
+            changed = False
+            for c in data.get("chats", []):
+                for m in c.get("messages", []):
+                    if int(m.get("id")) == int(message_id):
+                        if int(m.get("sender_id")) != int(user_id):
+                            return False
+                        m["deleted"] = True
+                        m["deleted_at"] = datetime.utcnow().isoformat()
+                        m["message"] = ""
+                        changed = True
+                        break
+                if changed:
+                    break
+            if changed:
+                return _save_chats_json(data)
+            return False
