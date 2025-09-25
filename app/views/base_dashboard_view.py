@@ -181,3 +181,11 @@ class BaseDashboardView(QMainWindow):
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to update profile: {str(e)}")
             return False
+
+    def on_profile_updated(self):
+        """Handle profile update events."""
+        # Reload user data
+        self.user = User.get_by_id(self.user.user_id)
+        # Update UI elements
+        if hasattr(self, 'ui') and hasattr(self.ui, 'welcomeLabel'):
+            self.ui.welcomeLabel.setText(f"Welcome, {self.user.first_name} {self.user.last_name}")

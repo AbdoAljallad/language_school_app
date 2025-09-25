@@ -142,3 +142,10 @@ class LoginView(QMainWindow):
             self.ui.errorLabel.setText("Invalid username or password")
             self.ui.passwordInput.clear()
             self.ui.passwordInput.setFocus()
+    
+    def reset(self):
+        """Reset the login form."""
+        self.ui.usernameInput.clear()
+        self.ui.passwordInput.clear()
+        self.ui.errorLabel.clear()
+        self.ui.usernameInput.setFocus()
