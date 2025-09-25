@@ -6,6 +6,7 @@ class Chat:
     Chat model wrapper.
     Provides a single place to call chat-related functionality (delegates to User helpers).
     """
+
     @staticmethod
     def get_chats(user_id: int) -> List[Dict[str, Any]]:
         """Return list of chats for a user."""
@@ -22,14 +23,20 @@ class Chat:
         return User.get_messages(chat_id, limit=limit, after_id=after_id)
 
     @staticmethod
-    def send_message(chat_id: int, sender_id: int, text: str) -> bool:
-        """Send a message in a chat."""
-        return User.send_message(chat_id, sender_id, text)
+    def send_message(chat_id: int, sender_id: int, message: str) -> bool:
+        """
+        Send a message in a chat.
+        Uses `message` column in `chat_messages` table.
+        """
+        return User.send_message(chat_id, sender_id, message)
 
     @staticmethod
-    def edit_message(message_id: int, user_id: int, new_text: str) -> bool:
-        """Edit a message (sender only)."""
-        return User.edit_message(message_id, user_id, new_text)
+    def edit_message(message_id: int, user_id: int, new_message: str) -> bool:
+        """
+        Edit a message (sender only).
+        Updates `message` column.
+        """
+        return User.edit_message(message_id, user_id, new_message)
 
     @staticmethod
     def delete_message(message_id: int, user_id: int) -> bool:

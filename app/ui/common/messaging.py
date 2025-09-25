@@ -20,13 +20,17 @@ def attach_messaging(ui, current_user_getter: Optional[Callable[[], Optional[int
       - edit_message(message_id)
       - delete_message(message_id)
     """
-    # minimal checks
-    if not all(hasattr(ui, name) for name in ("chatsList", "messagesList", "messageInput", "sendMessageButton", "newChatButton")):
+
+    # --- minimal UI checks ---
+    required_attrs = ("chatsList", "messagesList", "messageInput", "sendMessageButton", "newChatButton")
+    if not all(hasattr(ui, attr) for attr in required_attrs):
         return
 
     ui._messaging_current_user = None
     ui._messaging_current_chat = None
+    ui._messaging_last_messages = []
 
+    # --- helper: get current user ---
     def _get_current_user():
         if callable(current_user_getter):
             try:
@@ -35,9 +39,9 @@ def attach_messaging(ui, current_user_getter: Optional[Callable[[], Optional[int
                     return int(v)
             except Exception:
                 pass
-        # fallback to ui attribute if set externally
         return getattr(ui, "current_user_id", None)
 
+    # --- set current user ---
     def set_current_user(user_id):
         ui._messaging_current_user = int(user_id) if user_id is not None else None
         try:
@@ -46,6 +50,7 @@ def attach_messaging(ui, current_user_getter: Optional[Callable[[], Optional[int
             pass
     ui.set_current_user = set_current_user
 
+    # --- populate chats list ---
     def populate_chats():
         ui.chatsList.clear()
         uid = _get_current_user()
@@ -68,6 +73,7 @@ def attach_messaging(ui, current_user_getter: Optional[Callable[[], Optional[int
             ui.chatsList.addItem(it)
     ui.populate_chats = populate_chats
 
+    # --- resolve sender name ---
     def _resolve_sender_name(sender_id):
         try:
             u = User.get_by_id(sender_id)
@@ -77,9 +83,10 @@ def attach_messaging(ui, current_user_getter: Optional[Callable[[], Optional[int
             pass
         return str(sender_id)
 
+    # --- populate messages list ---
     def populate_messages(chat_id):
-        ui.messagesList.clear()
         if not chat_id:
+            ui.messagesList.clear()
             ui.messagesList.addItem("Select a chat")
             return
         ui._messaging_current_chat = int(chat_id)
@@ -87,12 +94,17 @@ def attach_messaging(ui, current_user_getter: Optional[Callable[[], Optional[int
             msgs = Chat.get_messages(chat_id) or []
         except Exception:
             msgs = []
+
+        # --- avoid UI flicker: update only if messages changed ---
+        if msgs == ui._messaging_last_messages:
+            return
+        ui._messaging_last_messages = msgs
+
+        ui.messagesList.clear()
         for m in msgs:
-            # m may be dict from JSON or DB row; normalize access
-            mid = int(m.get("id") or m.get("id", 0))
-            sender = m.get("sender_id") or m.get("sender") or m.get("sender_id")
+            mid = int(m.get("id") or 0)
+            sender = m.get("sender_id") or m.get("sender") or 0
             sender_name = _resolve_sender_name(sender)
-            text = ""
             if m.get("deleted") or m.get("deleted", False):
                 text = "[deleted]"
                 ts = m.get("deleted_at") or ""
@@ -103,10 +115,10 @@ def attach_messaging(ui, current_user_getter: Optional[Callable[[], Optional[int
                 ts = m.get("sent_at") or m.get("created_at") or ""
                 display = f"{sender_name}: {txt}" + (" (edited)" if edited else "") + (f" — {ts}" if ts else "")
             item = QtWidgets.QListWidgetItem(display)
-            # store message meta on item for edit/delete
             item.setData(QtCore.Qt.UserRole, {"message_id": mid, "sender_id": int(sender)})
             ui.messagesList.addItem(item)
-        # mark messages read (best-effort)
+
+        # mark messages read
         try:
             cur_user = _get_current_user()
             if cur_user:
@@ -116,6 +128,7 @@ def attach_messaging(ui, current_user_getter: Optional[Callable[[], Optional[int
             pass
     ui.populate_messages = populate_messages
 
+    # --- handle chat selection ---
     def _on_chat_selected():
         item = ui.chatsList.currentItem()
         if not item:
@@ -127,6 +140,7 @@ def attach_messaging(ui, current_user_getter: Optional[Callable[[], Optional[int
             pass
     ui.chatsList.itemSelectionChanged.connect(_on_chat_selected)
 
+    # --- send message ---
     def send_message():
         item = ui.chatsList.currentItem()
         if not item:
@@ -153,6 +167,7 @@ def attach_messaging(ui, current_user_getter: Optional[Callable[[], Optional[int
     ui.sendMessageButton.clicked.connect(send_message)
     ui.send_message = send_message
 
+    # --- start new chat ---
     def new_chat():
         username, ok = QInputDialog.getText(None, "New Chat", "Enter username to start chat:")
         if not ok or not username.strip():
@@ -177,7 +192,7 @@ def attach_messaging(ui, current_user_getter: Optional[Callable[[], Optional[int
     ui.newChatButton.clicked.connect(new_chat)
     ui.new_chat = new_chat
 
-    # Context menu for messages: edit/delete for sender only
+    # --- message context menu (edit/delete) ---
     def _on_message_context(point):
         item = ui.messagesList.itemAt(point)
         if not item:
@@ -200,9 +215,7 @@ def attach_messaging(ui, current_user_getter: Optional[Callable[[], Optional[int
             menu.exec_(ui.messagesList.mapToGlobal(point))
 
     def _edit_message(message_id, cur_user):
-        # load current text (best-effort)
         current_text = ""
-        # try fetch single message
         try:
             msgs = Chat.get_messages(ui._messaging_current_chat) or []
             for m in msgs:
@@ -242,7 +255,19 @@ def attach_messaging(ui, current_user_getter: Optional[Callable[[], Optional[int
     ui.messagesList.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
     ui.messagesList.customContextMenuRequested.connect(_on_message_context)
 
-    # initial population if UI has current_user_id already
+    # --- automatic messages refresh ---
+    def _auto_refresh_messages():
+        if ui._messaging_current_chat and _get_current_user():
+            try:
+                populate_messages(ui._messaging_current_chat)
+            except Exception:
+                pass
+
+    ui._messaging_timer = QtCore.QTimer()
+    ui._messaging_timer.timeout.connect(_auto_refresh_messages)
+    ui._messaging_timer.start(2000)  # تحديث كل ثانيتين
+
+    # --- initial population ---
     try:
         if getattr(ui, "current_user_id", None):
             set_current_user(ui.current_user_id)
