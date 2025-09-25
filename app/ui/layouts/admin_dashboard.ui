@@ -193,6 +193,9 @@ QLabel#welcomeLabel {
         </item>
         <item>
          <widget class="QTableWidget" name="usersTable">
+          <property name="contextMenuPolicy">
+           <enum>Qt::CustomContextMenu</enum>
+          </property>
           <property name="editTriggers">
            <set>QAbstractItemView::NoEditTriggers</set>
           </property>
@@ -353,6 +356,9 @@ QLabel#welcomeLabel {
         </item>
         <item>
          <widget class="QTableWidget" name="coursesTable">
+          <property name="contextMenuPolicy">
+           <enum>Qt::CustomContextMenu</enum>
+          </property>
           <property name="editTriggers">
            <set>QAbstractItemView::NoEditTriggers</set>
           </property>
@@ -847,7 +853,41 @@ QLabel#welcomeLabel {
     <string>About</string>
    </property>
   </action>
- </widget>
- <resources/>
- <connections/>
+  <!-- add actions so IDE/runtime knows about them -->
+  <action name="actionEditUser">
+   <property name="text">
+    <string>Edit User</string>
+   </property>
+  </action>
+  <action name="actionDeleteUser">
+   <property name="text">
+    <string>Delete User</string>
+   </property>
+  </action>
+  <action name="actionEditCourse">
+   <property name="text">
+    <string>Edit Course</string>
+   </property>
+  </action>
+  <action name="actionDeleteCourse">
+   <property name="text">
+    <string>Delete Course</string>
+   </property>
+  </action>
+
+  <!-- connect the customContextMenuRequested signals to slots (slots must exist in the UI owner) -->
+ <connections>
+  <connection>
+   <sender>usersTable</sender>
+   <signal>customContextMenuRequested(const QPoint&)</signal>
+   <receiver>AdminDashboard</receiver>
+   <slot>show_user_context_menu(const QPoint&)</slot>
+  </connection>
+  <connection>
+   <sender>coursesTable</sender>
+   <signal>customContextMenuRequested(const QPoint&)</signal>
+   <receiver>AdminDashboard</receiver>
+   <slot>show_course_context_menu(const QPoint&)</slot>
+  </connection>
+ </connections>
 </ui>

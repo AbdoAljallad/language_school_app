@@ -480,13 +480,17 @@ class User:
             return []
         # Try DB
         try:
+            # Use ANY_VALUE for non-aggregated user columns so query works with ONLY_FULL_GROUP_BY
             query = """
-                SELECT c.id as chat_id,
-                       CASE WHEN c.user1_id = %s THEN c.user2_id ELSE c.user1_id END as other_user_id,
-                       u.username as other_username, u.first_name, u.last_name,
-                       SUBSTRING_INDEX(GROUP_CONCAT(m.message ORDER BY m.sent_at DESC SEPARATOR '||__||'), '||__||', 1) as last_message,
-                       MAX(m.sent_at) as last_at,
-                       SUM(CASE WHEN m.read_status = 0 AND m.sender_id != %s THEN 1 ELSE 0 END) as unread_count
+                SELECT
+                    c.id AS chat_id,
+                    CASE WHEN c.user1_id = %s THEN c.user2_id ELSE c.user1_id END AS other_user_id,
+                    ANY_VALUE(u.username) AS other_username,
+                    ANY_VALUE(u.first_name) AS first_name,
+                    ANY_VALUE(u.last_name) AS last_name,
+                    SUBSTRING_INDEX(GROUP_CONCAT(m.message ORDER BY m.sent_at DESC SEPARATOR '||__||'), '||__||', 1) AS last_message,
+                    MAX(m.sent_at) AS last_at,
+                    SUM(CASE WHEN m.read_status = 0 AND m.sender_id != %s THEN 1 ELSE 0 END) AS unread_count
                 FROM chats c
                 LEFT JOIN users u ON u.id = CASE WHEN c.user1_id = %s THEN c.user2_id ELSE c.user1_id END
                 LEFT JOIN chat_messages m ON m.chat_id = c.id
@@ -494,6 +498,7 @@ class User:
                 GROUP BY c.id
                 ORDER BY last_at DESC
             """
+            # parameters: user_id used in CASE, in SUM, in LEFT JOIN CASE, and twice in WHERE
             rows = execute_query(query, (user_id, user_id, user_id, user_id, user_id), fetch=True) or []
             return rows
         except Exception:
